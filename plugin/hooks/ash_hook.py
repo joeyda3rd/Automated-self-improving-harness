@@ -158,7 +158,10 @@ def guard(event):
         return None
     if tool == "Bash":
         command = tin.get("command", "")
-        if hidden and re.search(r"(^|[\s/\"'])evals(/|\s|$)", command):
+        mentions = any(h in command for h in hidden)
+        if env("ASH_ROLE") == "improver":  # its cwd is a harness checkout, so relative paths count too
+            mentions = mentions or re.search(r"(^|[\s\"'=])(\./)?evals(/|\s|$)", command)
+        if mentions:
             return _deny("evaluation material is hidden from build and improvement sessions")
         if env("ASH_ROLE", "interactive") != "interactive":
             for pattern, why in DANGEROUS_BASH:

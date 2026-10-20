@@ -83,6 +83,9 @@ class HookTests(unittest.TestCase):
         self.assertTrue(denied(self.call("Read", {"file_path": check}, ASH_ROLE="eval")))
         self.assertTrue(denied(self.call("Bash", {"command": f"cat {check}"}, ASH_ROLE="improver")))
         self.assertTrue(denied(self.call("Grep", {"pattern": "x", "path": "evals"}, ASH_ROLE="improver")))
+        self.assertTrue(denied(self.call("Bash", {"command": "ls evals/tasks"}, ASH_ROLE="improver")))
+        self.assertFalse(denied(self.call("Bash", {"command": "pytest evals/test_model.py"})),
+                         "a project's own evals/ directory stays usable for builders")
 
     def test_stop_gate_bounces_until_limit(self):
         env = dict(self.env, ASH_VERIFY_CMD="test -f ok.txt", ASH_GATE_MAX="2")
