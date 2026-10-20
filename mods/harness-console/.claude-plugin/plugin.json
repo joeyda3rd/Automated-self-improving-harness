@@ -1,0 +1,6 @@
+{
+  "name": "ash-console",
+  "version": "0.1.0",
+  "description": "Live view of the ASH loop: queue, current task, recent runs and self-improvement decisions in a pane and the status line.",
+  "types": "./types/index.d.ts"
+}

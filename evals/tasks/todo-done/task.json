@@ -1,0 +1,11 @@
+{
+  "title": "Add `done` and `list --pending` to the todo CLI",
+  "spec": "Extend todo.py: `python3 todo.py done ID` marks item ID done (exit 1 with a message on stderr if no such item); `python3 todo.py list --pending` lists only items not yet done, in the same format as `list`. Keep existing behaviour. Add unit tests (use the TODO_DB environment variable to point at a temporary file) runnable with `python3 -m unittest -q`.",
+  "acceptance": [
+    "`done ID` marks the item done and `list` shows [x] for it",
+    "`done` with an unknown id exits 1",
+    "`list --pending` omits done items",
+    "`python3 -m unittest -q` passes"
+  ],
+  "verify_cmd": "python3 -m unittest -q"
+}

@@ -1,0 +1,176 @@
+"""Run one headless Claude Code session (`claude -p`) with the ASH plugin loaded."""
+import json
+import os
+import re
+import subprocess
+import time
+import uuid
+from dataclasses import dataclass, field
+
+from .config import append_jsonl, save_json
+
+BUILD_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "status": {"type": "string", "enum": ["done", "blocked", "failed"]},
+        "summary": {"type": "string"},
+        "files_changed": {"type": "array", "items": {"type": "string"}},
+        "follow_ups": {"type": "array", "items": {
+            "type": "object",
+            "properties": {"title": {"type": "string"}, "spec": {"type": "string"}},
+            "required": ["title", "spec"]}},
+    },
+    "required": ["status", "summary"],
+}
+
+PLAN_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "tasks": {"type": "array", "items": {
+            "type": "object",
+            "properties": {
+                "title": {"type": "string"},
+                "spec": {"type": "string"},
+                "acceptance": {"type": "array", "items": {"type": "string"}},
+                "depends_on": {"type": "array", "items": {"type": "integer"}},
+                "priority": {"type": "integer"},
+            },
+            "required": ["title", "spec"]}},
+        "verify_cmd": {"type": "string"},
+    },
+    "required": ["tasks"],
+}
+
+RETRO_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "lessons": {"type": "array", "items": {
+            "type": "object",
+            "properties": {"text": {"type": "string"},
+                           "scope": {"type": "string", "enum": ["project", "harness"]}},
+            "required": ["text", "scope"]}},
+        "harness_suggestion": {"type": "string"},
+    },
+    "required": ["lessons"],
+}
+
+IMPROVE_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "hypothesis": {"type": "string"},
+        "change_summary": {"type": "string"},
+        "expected_effect": {"type": "string"},
+    },
+    "required": ["hypothesis", "change_summary"],
+}
+
+
+INHERITED_SESSION_VARS = {"CLAUDE_CODE_SESSION_ID", "CLAUDE_CODE_CHILD_SESSION", "CLAUDE_PID",
+                          "CLAUDE_CODE_MESSAGING_SOCKET", "CLAUDE_AFTER_LAST_COMPACT", "CLAUDECODE"}
+
+
+@dataclass
+class SessionResult:
+    ok: bool
+    output: dict = field(default_factory=dict)
+    session_id: str = ""
+    cost_usd: float = 0.0
+    turns: int = 0
+    seconds: float = 0.0
+    error: str = ""
+
+
+def _parse_output(stdout):
+    """Pull the result envelope and the structured output out of `--output-format json`."""
+    envelope = {}
+    for candidate in (stdout.strip(), stdout.strip().splitlines()[-1] if stdout.strip() else ""):
+        try:
+            envelope = json.loads(candidate)
+            break
+        except ValueError:
+            continue
+    if isinstance(envelope, list):  # stream of messages: keep the result message
+        envelope = next((m for m in reversed(envelope) if m.get("type") == "result"), {})
+    structured = envelope.get("structured_output")
+    if not isinstance(structured, dict):
+        text = envelope.get("result") or ""
+        match = re.search(r"\{.*\}", text, re.S)
+        try:
+            structured = json.loads(match.group(0)) if match else {}
+        except ValueError:
+            structured = {}
+    return envelope, structured
+
+
+def role_prompt(plugin_dir, role):
+    path = os.path.join(plugin_dir, "roles", f"{role}.md")
+    try:
+        with open(path, encoding="utf-8") as fh:
+            return fh.read()
+    except OSError:
+        return ""
+
+
+def run_session(harness, *, prompt, role, cwd, run_dir, schema=None, plugin_dir=None,
+                resume=None, budget_usd=None, extra_env=None, timeout=3600):
+    """Run one `claude -p` session and return its parsed result.
+
+    The session gets the ASH plugin (skills, subagents, kernel hooks), the role's
+    system prompt, a budget cap, and the run context in its environment so the
+    hooks can find the run record.
+    """
+    plugin_dir = plugin_dir or harness.plugin_dir
+    session_id = resume or str(uuid.uuid4())
+    cmd = [harness.claude_bin, "-p", prompt, "--output-format", "json",
+           "--plugin-dir", plugin_dir,
+           "--permission-mode", harness.get("permission_mode", "bypassPermissions")]
+    cmd += ["--resume", session_id] if resume else ["--session-id", session_id]
+    if not resume:
+        cmd += ["--append-system-prompt", role_prompt(plugin_dir, role)]
+    if harness.get("model"):
+        cmd += ["--model", harness.get("model")]
+    if budget_usd:
+        cmd += ["--max-budget-usd", str(budget_usd)]
+    if schema:
+        cmd += ["--json-schema", json.dumps(schema)]
+
+    # A harness launched from inside another Claude Code session must not leak that
+    # session's identity into its children, or --session-id/--resume address the parent.
+    env = {k: v for k, v in os.environ.items() if k not in INHERITED_SESSION_VARS}
+    env.update({
+        "ASH_HOME": harness.home,
+        "ASH_ROLE": role,
+        "ASH_RUN_DIR": run_dir,
+        "ASH_GATE_MAX": str(harness.get("gate_max", 3)),
+        "ASH_VERIFY_TIMEOUT": str(harness.get("verify_timeout_seconds", 900)),
+    })
+    env.update({k: v for k, v in (extra_env or {}).items() if v is not None})
+
+    os.makedirs(run_dir, exist_ok=True)
+    started = time.time()
+    try:
+        proc = subprocess.run(cmd, cwd=cwd, env=env, capture_output=True, text=True, timeout=timeout)
+        stdout, stderr, code = proc.stdout, proc.stderr, proc.returncode
+    except subprocess.TimeoutExpired as exc:
+        stdout, stderr, code = exc.stdout or "", f"session timed out after {timeout}s", -1
+    except FileNotFoundError:
+        stdout, stderr, code = "", f"claude binary not found: {harness.claude_bin}", -1
+    seconds = round(time.time() - started, 1)
+
+    envelope, structured = _parse_output(stdout if isinstance(stdout, str) else stdout.decode())
+    result = SessionResult(
+        ok=code == 0 and not envelope.get("is_error", False),
+        output=structured,
+        session_id=envelope.get("session_id") or session_id,
+        cost_usd=float(envelope.get("total_cost_usd") or 0.0),
+        turns=int(envelope.get("num_turns") or 0),
+        seconds=seconds,
+        error="" if code == 0 else (stderr or "")[-2000:],
+    )
+    append_jsonl(os.path.join(run_dir, "sessions.jsonl"), {
+        "ts": started, "role": role, "session_id": result.session_id, "resumed": bool(resume),
+        "ok": result.ok, "cost_usd": result.cost_usd, "turns": result.turns,
+        "seconds": seconds, "error": result.error[:500],
+    })
+    save_json(os.path.join(run_dir, f"{role}-output.json"), structured)
+    return result

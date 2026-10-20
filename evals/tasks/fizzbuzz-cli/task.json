@@ -1,0 +1,10 @@
+{
+  "title": "Create a fizzbuzz command-line program",
+  "spec": "The repository is empty. Create `fizzbuzz.py`, runnable as `python3 fizzbuzz.py N`, which prints the numbers 1..N one per line, replacing multiples of 3 with Fizz, multiples of 5 with Buzz and multiples of both with FizzBuzz. With a missing or non-positive-integer argument it prints a usage message to stderr and exits with status 2. Add unit tests runnable with `python3 -m unittest -q`.",
+  "acceptance": [
+    "`python3 fizzbuzz.py 15` prints the standard 15 fizzbuzz lines",
+    "invalid input exits 2 with a message on stderr",
+    "`python3 -m unittest -q` passes"
+  ],
+  "verify_cmd": "python3 -m unittest -q"
+}

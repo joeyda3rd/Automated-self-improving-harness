@@ -1,0 +1,20 @@
+{
+  "claude_bin": "claude",
+  "model": null,
+  "permission_mode": "bypassPermissions",
+  "budget_usd_per_run": 5.0,
+  "budget_usd_total": null,
+  "max_attempts_per_run": 2,
+  "max_runs_per_task": 3,
+  "gate_max": 3,
+  "verify_timeout_seconds": 900,
+  "retro": true,
+  "improve_every": 5,
+  "improve_budget_usd": 5.0,
+  "eval_budget_usd_per_task": 2.0,
+  "eval_repeats": 1,
+  "max_consecutive_failures": 3,
+  "idle_sleep_seconds": 60,
+  "learnings_max": 60,
+  "mutable_paths": ["plugin/skills/", "plugin/agents/", "plugin/roles/", "docs/"]
+}

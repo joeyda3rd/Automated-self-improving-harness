@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# ASH command-line entry point: bin/ash <command> [...]
+ASH_HOME="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+export ASH_HOME
+exec env PYTHONPATH="$ASH_HOME${PYTHONPATH:+:$PYTHONPATH}" python3 -m ash "$@"

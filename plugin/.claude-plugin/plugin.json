@@ -1,0 +1,5 @@
+{
+  "name": "ash",
+  "version": "0.1.0",
+  "description": "Automated Self-improving Harness: skills, subagents and guardrail hooks that let headless Claude Code sessions build software from a task queue and improve themselves under an eval gate."
+}

@@ -1,0 +1,100 @@
+# ASH architecture
+
+ASH turns stock Claude Code into a software factory that runs unattended and gets better at its job over time. It adds no new agent framework. It composes Claude Code's own primitives (headless sessions, plugins, skills, subagents, hooks, session resume, structured output, budgets and mods) and puts a small, deterministic orchestrator around them.
+
+The design rests on three rules:
+
+1. **The model does the work; code makes the decisions that must not drift.** Choosing the next task, judging whether work is done, integrating it, and keeping or discarding a self-modification are all plain Python and shell exit codes. None of them is left to the model's judgement.
+2. **Self-improvement only touches the "genome", never the "kernel".** The harness may rewrite its own prompts, skills and subagents. It may never rewrite the code that grades it, guards it, or runs it.
+3. **Every change to the genome must win a benchmark.** It is a ratchet: a change ships only if the eval pass rate goes up, or stays the same at a measurably lower cost.
+
+## The two halves
+
+| | Kernel (immutable to the harness) | Genome (evolved by the harness) |
+|---|---|---|
+| What | `ash/` orchestrator, `plugin/hooks/` guardrails and gates, `evals/` benchmark, `harness.json`, `bin/`, `tests/` | `plugin/roles/` session personas, `plugin/skills/` procedures, `plugin/agents/` subagents, `docs/` |
+| Changed by | humans | the improvement loop, behind the eval gate |
+| Enforced by | the PreToolUse guard (denies edits and shell writes), the post-hoc diff check in `improve.py`, and hidden evals | - |
+
+Memory (`state/learnings.md`, per-project lessons, `.ash/notes.md`) is a third tier. It is written freely by the fast loop, kept small by a cap and deduplication, and re-injected at every session start.
+
+## Claude Code primitive → ASH role
+
+| Claude Code feature | How ASH uses it |
+|---|---|
+| **Headless sessions** (`claude -p`, `--output-format json`) | Every unit of work (plan, build, retro, improve, eval) is one non-interactive session launched by `ash/claude.py`. |
+| **Structured output** (`--json-schema`) | Each role returns a schema-checked JSON object (`BUILD_SCHEMA`, `PLAN_SCHEMA`, ...), so the orchestrator never parses prose. |
+| **Sessions** (`--session-id`, `--resume`) | Each run gets a known session id. When independent verification fails, the orchestrator *resumes the same session* with the failure, so the agent keeps all its context instead of starting cold. Transcripts are copied into the run record by the `SessionEnd` hook. |
+| **Plugins** (`--plugin-dir`) | All behaviour ships as one plugin (`plugin/`), so it can be loaded into any project without touching the project's own `.claude/`. Improvement candidates are benchmarked by pointing `--plugin-dir` at a worktree copy. |
+| **System prompt** (`--append-system-prompt`) | Role personas in `plugin/roles/*.md` (builder, planner, retro, improver). |
+| **Skills** | Procedures: `build-task`, `verify`, `plan-work`, `retrospective`, `improve-harness`. These are the main thing self-improvement edits. |
+| **Subagents** | `reviewer` (diff review against the task card) and `test-writer` (tests first). The improver can add more when a sub-problem recurs. |
+| **Hooks: SessionStart** | Injects lessons from memory, project notes and the definition of done. This is how learning reaches new sessions. |
+| **Hooks: PreToolUse** | The guard: confines writes to the workspace, blocks `git push`, `sudo`, `curl \| sh` and similar, keeps sessions out of orchestrator state, protects the kernel from the improver, and hides `evals/` so neither builders nor the improver can learn the answers. |
+| **Hooks: PostToolUse / SubagentStop** | Telemetry. Every tool call goes to `tools.jsonl`, with errors flagged. |
+| **Hooks: Stop** | The verification gate. When the agent tries to finish, the hook runs `ASH_VERIFY_CMD`. On failure it blocks the stop and feeds the output back, up to `gate_max` times. |
+| **Hooks: PreCompact / SessionEnd** | Records compactions and saves the transcript into the run directory for the retrospective. |
+| **Budgets** (`--max-budget-usd`) | A cap per session, plus a total cap (`budget_usd_total`) enforced by the loop. |
+| **Permission modes** | `bypassPermissions` by default, so the loop never blocks on a prompt. The guard hook still applies under it, and the harness is meant to run in a container or VM. |
+| **Mods** | `mods/harness-console` is a live pane (`/ash`) and status-line entry that shows the queue, recent runs and every keep/reject decision, for anyone with a Claude Code session open in the project. |
+| **Git worktrees** | One worktree and branch per task (`ash/T-0007`), and one per improvement attempt (`ash-improve/<ts>`). Base branches only move by verified merges. |
+
+## The loops
+
+```
+                ┌──────────────────────── ash run (continuous) ───────────────────────┐
+ assignment ──▶ │ intake ─▶ plan ─▶ ready queue ─▶ build ─▶ verify ─▶ integrate ─▶ retro │
+ (.ash/inbox,   │            │       (deps,        (worktree, (stop gate + (merge base  (lessons ─▶ memory)
+  ash assign)   │            ▼        priority)     resume on  orchestrator  in, re-verify,      │
+                │       child tasks                 failure)   re-check)     merge --no-ff)     │
+                └──────────────────────────────────────────────────────────────────────┘
+                                         every N builds │
+                                                        ▼
+                ┌──────────────────── improvement cycle (slow loop) ──────────────────┐
+                │ evidence ─▶ improver session in harness worktree ─▶ kernel diff check │
+                │   ─▶ benchmark candidate vs cached baseline ─▶ keep (merge) / discard │
+                │   ─▶ log to state/improvements.jsonl (rejected ideas are remembered)  │
+                └──────────────────────────────────────────────────────────────────────┘
+```
+
+### Build loop (per task)
+
+1. **Pick**: the highest-priority pending task whose dependencies are all `done`. Tasks that depend on a failed task become `blocked`.
+2. **Plan tasks** (`kind: plan`) run the planner read-only on the project root. It returns child tasks with acceptance criteria and dependencies, and may set the project's `verify_cmd`.
+3. **Build tasks** run the builder in a fresh worktree off the base branch:
+   - The Stop hook gates finishing on `verify_cmd` (inner loop, inside the session).
+   - The orchestrator then re-runs `verify_cmd` itself and does not trust the agent's claim. If it fails, it resumes the same session with the output (middle loop, `max_attempts_per_run`).
+   - A failed run puts the task back in the queue, with the failure written into its card for the next attempt (outer loop, `max_runs_per_task`).
+4. **Integrate**: commit, merge the latest base *into* the task branch, verify again, then `merge --no-ff` into base. A conflict or a post-merge failure sends the task back.
+5. **Follow-ups** the builder reports become new low-priority tasks, at most two generations deep.
+6. **Retro** (fast loop): a cheap session reads the run record (telemetry, gate history, guard denials, transcript) and returns at most three lessons, each scoped `harness` or `project`. They are deduplicated and capped, then injected at every later session start. Suggestions that a lesson cannot fix go to `state/suggestions.jsonl` for the slow loop.
+
+### Improvement cycle (slow loop)
+
+Triggered every `improve_every` builds, or by hand with `ash improve`.
+
+1. **Evidence**: outcome mix, cost, turns, gate bounces, guard denials and tool errors over recent runs; failure notes; retro suggestions; current lessons; and every earlier improvement attempt with its verdict.
+2. **Propose**: the improver works in a worktree of the harness repo, with writes restricted to `mutable_paths` by the guard (`ASH_WRITE_ROOTS`). It makes one focused change and states its hypothesis.
+3. **Kernel check**: any changed file outside `mutable_paths` rejects the attempt outright. This is a second line of defence behind the guard.
+4. **Benchmark**: every eval in `evals/tasks/` runs in a throwaway repo with `--plugin-dir` pointing at the candidate. The hidden `check.sh` decides pass or fail. The baseline score is cached per harness commit.
+5. **Ratchet** (`evals.better`): keep the change if the pass rate rises, or if it holds while mean cost drops by at least `improve_min_cost_gain`. Otherwise discard it.
+6. **Apply**: the change is committed with its hypothesis and evidence, and merged into the live harness. Plugin files are read fresh by every session, so the next build already uses the new genome. Nothing needs to restart.
+
+`ash report` prints success rate, cost and turns grouped by harness commit. That table is the learning curve.
+
+## Safety and failure containment
+
+- **Kill switches**: `ash pause` (writes `state/STOP`, so the loop stops after the current task); a circuit breaker after `max_consecutive_failures` writes `state/PAUSED` and refuses to restart until `ash resume`.
+- **Budgets**: per session, per eval task, per improvement attempt, and a lifetime total.
+- **Crash recovery**: tasks left `active` by a crash go back to `pending` on the next start. Orchestrator exceptions are caught per task.
+- **No reward hacking by construction**: the verification command, eval checks and gate logic live in the kernel. Eval checks are hidden from every agent role. The orchestrator re-verifies independently instead of trusting `status: done`.
+- **Blast radius**: sessions write only inside their worktree (and `/tmp`), cannot push, cannot touch `.ash/` state (except `notes.md`), and cannot modify the harness while building a project.
+- **Run it in a sandbox.** `bypassPermissions` plus shell access is powerful. Run ASH in a container or VM with only the credentials it needs.
+
+## Known limits and extension points
+
+- **Eval noise**: LLM runs are stochastic. With few evals and `eval_repeats: 1`, a lucky or unlucky run can flip a decision. Raise `eval_repeats` and grow `evals/tasks/` as budget allows. Rejected ideas are remembered, so noise mostly costs time, not regressions.
+- **Benchmark drift**: the harness can only get better at what the evals measure. Add evals that look like the work you actually assign. A good habit is to turn every real failure into a new eval.
+- **Grep leakage**: the guard hides `evals/` from paths it can see, but a broad recursive grep from the harness root during an improvement could still surface check scripts. Keeping evals outside the repo (and changing `evals_dir`) closes that gap fully.
+- **Intake**: `.ash/inbox/*.md` and `ash assign` are the built-in channels. A GitHub-issues or Linear poller only has to write inbox files.
+- **Scale-out**: tasks are independent worktrees, so several `ash run` workers could share one queue if task claiming were made atomic (for example with a lock file per task). That change is not implemented.
