@@ -8,7 +8,7 @@ import time
 from collections import Counter
 
 from . import evals, gitops
-from .claude import IMPROVE_SCHEMA, run_session
+from .claude import IMPROVE_SCHEMA, BudgetExceeded, run_session
 from .config import append_jsonl, load_json, read_jsonl, save_json
 from .memory import read_lessons
 
@@ -50,7 +50,10 @@ def baseline(harness, commit):
     cache = load_json(cache_path, {}) or {}
     if "per_task" not in cache.get(commit, {}):  # missing, or cached before per-task scoring
         log(f"benchmarking baseline {commit[:12]}")
-        cache[commit] = evals.run_suite(harness, harness.plugin_dir, f"baseline-{commit[:12]}")
+        summary = evals.run_suite(harness, harness.plugin_dir, f"baseline-{commit[:12]}")
+        if summary.get("incomplete"):
+            raise BudgetExceeded("total budget reached while benchmarking the baseline")
+        cache[commit] = summary
         save_json(cache_path, cache)
     return cache[commit]
 

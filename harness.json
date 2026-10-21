@@ -3,7 +3,7 @@
   "model": null,
   "permission_mode": "bypassPermissions",
   "budget_usd_per_run": 5.0,
-  "budget_usd_total": null,
+  "budget_usd_total": 20.0,
   "max_attempts_per_run": 2,
   "max_runs_per_task": 3,
   "gate_max": 3,
@@ -16,5 +16,10 @@
   "max_consecutive_failures": 3,
   "idle_sleep_seconds": 60,
   "learnings_max": 60,
-  "mutable_paths": ["plugin/skills/", "plugin/agents/", "plugin/roles/", "docs/"]
+  "mutable_paths": [
+    "plugin/skills/",
+    "plugin/agents/",
+    "plugin/roles/",
+    "docs/"
+  ]
 }

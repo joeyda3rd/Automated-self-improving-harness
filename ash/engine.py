@@ -6,7 +6,8 @@ import subprocess
 import time
 
 from . import gitops, integrity
-from .claude import BUILD_SCHEMA, PLAN_SCHEMA, RETRO_SCHEMA, run_session
+from . import claude
+from .claude import BUILD_SCHEMA, PLAN_SCHEMA, RETRO_SCHEMA, BudgetExceeded, run_session
 from .config import append_jsonl, load_json, read_jsonl, save_json
 from .memory import add_lessons, curate, injected, read_lessons
 from .tasks import ACTIVE, BLOCKED, DONE, FAILED, PENDING, TaskStore, card
@@ -296,7 +297,7 @@ def retro(harness, project, record):
 # --------------------------------------------------------------------------- loop
 
 def spent(harness):
-    return sum(r.get("cost_usd", 0) for r in read_jsonl(harness.metrics))
+    return claude.spent(harness)
 
 
 def builds_since_improvement(harness):
@@ -312,6 +313,10 @@ def run_task(harness, project, task):
                                                       "kind": task["kind"]})
     try:
         record = plan(harness, project, task) if task["kind"] == "plan" else build(harness, project, task)
+    except BudgetExceeded:
+        task["status"] = PENDING  # not the task's fault; it waits for more budget
+        store.save(task)
+        raise
     except Exception as exc:  # keep the loop alive; the task goes back to the queue with the error
         log(f"{task['id']} crashed: {exc!r}")
         record = finish(harness, project, task, new_run_dir(harness, f"{task['id']}-crash"), FAILED, None,
@@ -319,6 +324,8 @@ def run_task(harness, project, task):
     if harness.get("retro", True) and record.get("kind") == "build":
         try:
             retro(harness, project, record)
+        except BudgetExceeded:
+            pass  # the loop's own check stops before the next task
         except Exception as exc:
             log(f"retro failed: {exc!r}")
     return record
@@ -360,7 +367,12 @@ def loop(harness, project, *, once=False, until_empty=False, max_tasks=None):
             time.sleep(harness.get("idle_sleep_seconds", 60))
             continue
 
-        record = run_task(harness, project, ready[0])
+        try:
+            record = run_task(harness, project, ready[0])
+        except BudgetExceeded as exc:
+            log(f"{exc}; exiting")
+            write_status(harness, project, "out-of-budget")
+            return 3
         processed += 1
         failures = 0 if record["outcome"] == DONE else failures + 1
         if failures >= harness.get("max_consecutive_failures", 3):
@@ -376,6 +388,10 @@ def loop(harness, project, *, once=False, until_empty=False, max_tasks=None):
             write_status(harness, project, "improving")
             try:
                 improve.cycle(harness)
+            except BudgetExceeded as exc:
+                log(f"{exc}; exiting")
+                write_status(harness, project, "out-of-budget")
+                return 3
             except Exception as exc:
                 log(f"improvement cycle failed: {exc!r}")
         write_status(harness, project, "working")

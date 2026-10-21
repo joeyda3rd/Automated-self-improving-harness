@@ -69,7 +69,8 @@ def cmd_report(h, args):
         print(f"{commit:<14}{n:>6}{sum(r['outcome'] == 'done' for r in rows) / n:>7.0%}"
               f"{sum(r['cost_usd'] for r in rows) / n:>10.3f}{sum(r['turns'] for r in rows) / n:>8.1f}"
               f"{sum(r.get('gate_failures', 0) for r in rows) / n:>6.1f}")
-    print(f"total spend ${engine.spent(h):.2f}")
+    limit = h.get("budget_usd_total")
+    print(f"total spend ${engine.spent(h):.2f}" + (f" of ${limit:.2f} budget" if limit else " (no total budget set)"))
     for i in read_jsonl(h.improvements)[-10:]:
         print(f"  {'+' if i.get('accepted') else '-'} {i.get('hypothesis', '')[:70]}  [{i.get('reason')}]")
 
@@ -80,6 +81,8 @@ def cmd_improve(h, args):
 
 def cmd_eval(h, args):
     summary = evals.run_suite(h, os.path.abspath(args.plugin_dir or h.plugin_dir), args.label)
+    if summary.get("incomplete"):
+        print(f"stopped early: total budget ${h.get('budget_usd_total')} reached (spent ${engine.spent(h):.2f})")
     print(json.dumps({k: v for k, v in summary.items() if k != "results"}, indent=2))
     for r in summary["results"]:
         print(f"  {'PASS' if r['passed'] else 'FAIL'} {r['eval']} ${r['cost_usd']:.3f} {r['turns']} turns")

@@ -7,7 +7,7 @@ import time
 import uuid
 from dataclasses import dataclass, field
 
-from .config import append_jsonl, save_json
+from .config import append_jsonl, read_jsonl, save_json
 
 BUILD_SCHEMA = {
     "type": "object",
@@ -74,6 +74,34 @@ INHERITED_SESSION_VARS = {"CLAUDE_CODE_SESSION_ID", "CLAUDE_CODE_CHILD_SESSION",
                           "CLAUDE_CODE_MESSAGING_SOCKET", "CLAUDE_AFTER_LAST_COMPACT", "CLAUDECODE"}
 
 
+class BudgetExceeded(RuntimeError):
+    """The harness-wide spend limit (`budget_usd_total`) is reached; no new session may start."""
+
+
+def ledger_path(harness):
+    return os.path.join(harness.state, "spend.jsonl")
+
+
+def spent(harness):
+    """Dollars spent by every session the harness has launched (builds, plans, retros, evals, improvements)."""
+    path = ledger_path(harness)
+    if not os.path.exists(path):  # first use: backfill from the per-run session logs
+        import glob
+        for f in sorted(glob.glob(os.path.join(harness.state, "**", "sessions.jsonl"), recursive=True)):
+            for r in read_jsonl(f):
+                append_jsonl(path, {"ts": r.get("ts"), "role": r.get("role"), "cost_usd": r.get("cost_usd", 0),
+                                    "backfilled": True})
+        if not os.path.exists(path):
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            open(path, "a").close()
+    return round(sum(r.get("cost_usd", 0) for r in read_jsonl(path)), 4)
+
+
+def remaining(harness):
+    limit = harness.get("budget_usd_total")
+    return None if not limit else max(0.0, limit - spent(harness))
+
+
 @dataclass
 class SessionResult:
     ok: bool
@@ -124,6 +152,11 @@ def run_session(harness, *, prompt, role, cwd, run_dir, schema=None, plugin_dir=
     system prompt, a budget cap, and the run context in its environment so the
     hooks can find the run record.
     """
+    left = remaining(harness)
+    if left is not None:
+        if left <= 0.01:
+            raise BudgetExceeded(f"total budget ${harness.get('budget_usd_total')} is spent")
+        budget_usd = min(budget_usd or left, left)
     plugin_dir = plugin_dir or harness.plugin_dir
     session_id = resume or str(uuid.uuid4())
     cmd = [harness.claude_bin, "-p", prompt, "--output-format", "json",
@@ -173,6 +206,9 @@ def run_session(harness, *, prompt, role, cwd, run_dir, schema=None, plugin_dir=
         seconds=seconds,
         error="" if code == 0 else (stderr or "")[-2000:],
     )
+    spent(harness)  # make sure the ledger exists (and is backfilled) before adding to it
+    append_jsonl(ledger_path(harness), {"ts": started, "role": role, "cost_usd": result.cost_usd,
+                                        "run_dir": run_dir})
     append_jsonl(os.path.join(run_dir, "sessions.jsonl"), {
         "ts": started, "role": role, "session_id": result.session_id, "resumed": bool(resume),
         "ok": result.ok, "cost_usd": result.cost_usd, "turns": result.turns,

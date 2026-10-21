@@ -10,7 +10,7 @@ import unittest
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
-from ash import engine, evals, gitops, improve, integrity, memory  # noqa: E402
+from ash import claude, engine, evals, gitops, improve, integrity, memory  # noqa: E402
 from ash.config import Harness, Project, append_jsonl, read_jsonl, save_json  # noqa: E402
 from ash.tasks import TaskStore  # noqa: E402
 
@@ -305,6 +305,21 @@ class LoopTests(unittest.TestCase):
         kept = read(self.harness.learnings)
         self.assertIn("small commits", kept)
         self.assertNotIn("rewrite the whole file", kept)
+
+    def test_total_budget_stops_every_kind_of_session(self):
+        self.harness.cfg.update({"budget_usd_total": 0.05, "retro": False})  # fake sessions cost $0.01
+        self.project.set_config(verify_cmd="ls feature_*.txt")
+        store = TaskStore(self.project)
+        for i in range(10):
+            store.add(f"task {i}", "x")
+        self.assertEqual(engine.loop(self.harness, self.project, until_empty=True), 3)
+        self.assertLessEqual(engine.spent(self.harness), 0.05)
+        self.assertNotIn("active", store.counts(), "an interrupted task goes back to the queue")
+        summary = evals.run_suite(self.harness, self.harness.plugin_dir, "after-budget")
+        self.assertTrue(summary["incomplete"])
+        self.assertFalse(evals.better(summary, summary)[0])
+        with self.assertRaises(claude.BudgetExceeded):
+            improve.cycle(self.harness)
 
     def test_inbox_intake(self):
         with open(os.path.join(self.project.inbox, "feature.md"), "w") as fh:

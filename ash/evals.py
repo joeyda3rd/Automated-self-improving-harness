@@ -16,7 +16,7 @@ import tempfile
 import time
 
 from . import gitops
-from .claude import BUILD_SCHEMA, run_session
+from .claude import BUILD_SCHEMA, BudgetExceeded, run_session
 from .config import append_jsonl, load_json
 from .tasks import card
 
@@ -55,13 +55,20 @@ def run_one(harness, eval_dir, plugin_dir, label, repeat=0):
 
 def run_suite(harness, plugin_dir, label, names=None):
     """Score a plugin directory (current harness or a candidate) on the evals named (default: all)."""
-    results = []
+    results, incomplete = [], False
     for eval_dir in discover(harness):
         if names is not None and os.path.basename(eval_dir) not in names:
             continue
         for r in range(int(harness.get("eval_repeats", 1))):
-            results.append(run_one(harness, eval_dir, plugin_dir, label, r))
+            try:
+                results.append(run_one(harness, eval_dir, plugin_dir, label, r))
+            except BudgetExceeded:
+                incomplete = True
+                break
+        if incomplete:
+            break
     summary = summarize(label, results)
+    summary["incomplete"] = incomplete  # cut short by the total budget: never cache or accept on it
     append_jsonl(os.path.join(harness.state, "eval_runs.jsonl"), summary)
     return summary
 
@@ -109,6 +116,8 @@ def better(baseline, candidate, min_cost_gain=0.05):
         `min_cost_gain` AND the candidate was cheaper on most tasks;
       - anything else is discarded.
     """
+    if candidate.get("incomplete") or baseline.get("incomplete"):
+        return False, "benchmark incomplete (total budget reached)"
     shared = [n for n in candidate["per_task"] if n in baseline["per_task"]]
     if not shared:
         return False, "no evals ran"
