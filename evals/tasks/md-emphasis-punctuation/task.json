@@ -1,0 +1,12 @@
+{
+  "title": "Bold text ending in punctuation is no longer recognised when followed directly by a letter (breaks Korean and similar text)",
+  "spec": "This is the Python-Markdown library (Python 3, no dependencies). Run the tests with `python3 -m unittest discover -s tests -q`.\n\nSince the latest release, strong/emphasis that ends with punctuation is left as literal asterisks when a letter follows the closing delimiter without a space. This is very common in Korean, where particles attach directly to the preceding word.\n\nInput: `markdown.markdown('**단어(설명)**입니다.')`\nExpected: `<p><strong>단어(설명)</strong>입니다.</p>`\nActual: `<p>**단어(설명)**입니다.</p>`\n\nThe same happens in English, e.g. `**Hello (world)**text` stays as literal `**`. Version 3.11.0 rendered both correctly. The new release appears to enforce CommonMark's punctuation rules for where emphasis may open and close (for instance `a**\"foo\"**` is no longer emphasised either). For backwards compatibility those punctuation rules should not be enforced: please restore the previous behaviour for emphasis next to punctuation, while keeping the rest of the emphasis handling as it is now.",
+  "acceptance": [
+    "The reported Korean input renders as expected",
+    "Emphasis next to punctuation behaves as it did before the punctuation rules were introduced (e.g. `a**\"foo\"**` gives `<p>a<strong>\"foo\"</strong></p>`); other emphasis behaviour is unchanged",
+    "A regression test is added and existing tests that assert the stricter punctuation behaviour are updated",
+    "The full test suite passes"
+  ],
+  "verify_cmd": "python3 -m unittest discover -s tests -q",
+  "source": "https://github.com/Python-Markdown/markdown/commit/97233efa01b888ee0fa84b60ab2601bc72182277"
+}

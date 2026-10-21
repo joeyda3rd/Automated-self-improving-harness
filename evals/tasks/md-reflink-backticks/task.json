@@ -1,0 +1,12 @@
+{
+  "title": "Reference links whose text contains inline code are not linked",
+  "spec": "This is the Python-Markdown library (Python 3, no dependencies). Run the tests with `python3 -m unittest discover -s tests -q`.\n\nA reference-style link whose label contains backtick code is not turned into a link, even though the same text works as an inline link (`[some `Text`](http://example.com)`) and as a full reference link (`[some `Text`][ref]`).\n\nInput:\n\n```\n[`Text`]\n\n[`Text`]: http://example.com\n```\n\nExpected: `<p><a href=\"http://example.com\"><code>Text</code></a></p>`\nActual: `<p>[<code>Text</code>]</p>`\n\nThe same happens when code is only part of the label, e.g. `[some `Text`]` or `[`Text` after]` with a matching definition; these should give `<a href=\"http://example.com\">some <code>Text</code></a>` and `<a href=\"http://example.com\"><code>Text</code> after</a>`. A label with a single unmatched backtick (`[some `Text]`) already links correctly and should keep doing so.",
+  "acceptance": [
+    "The reported input renders as a link containing the code",
+    "Shortcut reference links with code anywhere in the label are linked; unmatched backticks still work",
+    "A regression test is added",
+    "The full test suite passes"
+  ],
+  "verify_cmd": "python3 -m unittest discover -s tests -q",
+  "source": "https://github.com/Python-Markdown/markdown/commit/07dfa4eb43f7a2ab3181b4f842a960a03a6c1221"
+}

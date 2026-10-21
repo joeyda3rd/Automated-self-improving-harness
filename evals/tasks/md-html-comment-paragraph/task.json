@@ -1,0 +1,12 @@
+{
+  "title": "An HTML comment inside an inline `<span>` splits the paragraph in two",
+  "spec": "This is the Python-Markdown library (Python 3, no dependencies). Run the tests with `python3 -m unittest discover -s tests -q`.\n\nWhen an HTML comment sits on its own line inside an inline element that is closed in the same paragraph, the comment is pulled out as a block and the paragraph is split around it, leaving broken, unbalanced HTML.\n\nInput: `markdown.markdown('<span>\\n<!-- comment -->\\n</span>\\n')`\nExpected: `<p><span>\\n<!-- comment -->\\n</span></p>`\nActual: `<p><span></p>\\n<!-- comment -->\\n<p></span></p>`\n\nThe same happens when the closing tag follows the comment on the same line (`<span>\\n<!-- comment --></span>` should give `<p><span>\\n<!-- comment --></span></p>`). A comment that is on the same line as the opening tag already works. A comment should only be split out when the inline element is not closed in that paragraph: if the comment is separated by blank lines, the element is left unclosed, or the comment follows already-closed or void inline HTML, the current block-level handling should stay.",
+  "acceptance": [
+    "The reported inputs keep the comment inside the paragraph",
+    "Comments after blank lines, after an unclosed inline tag, or after closed or void inline HTML are still output as separate blocks as today",
+    "Regression tests are added",
+    "The full test suite passes"
+  ],
+  "verify_cmd": "python3 -m unittest discover -s tests -q",
+  "source": "https://github.com/Python-Markdown/markdown/commit/0bf535bc406c95dad66050f07c8402af03fe07d5"
+}
