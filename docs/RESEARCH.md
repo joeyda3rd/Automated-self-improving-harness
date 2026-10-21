@@ -80,6 +80,17 @@ Docs: [hooks](https://code.claude.com/docs/en/hooks.md), [headless](https://code
      - judgement calls that are graded, such as knowing when to report `blocked`.
 
      Until such evals exist, the ratchet can still optimise **cost and turns**: 16 tasks give the paired cost rule enough breadth.
+
+   **Third measurement: real bugs, 2026-10-21.**
+   - **Setup:** 9 evals built from real Python-Markdown fix commits (2025–2026) with `tests/make_git_eval.py`.
+     - Seed: the parent commit, pinned by `seed.git.json`, with no git history.
+     - Task: a user-style bug report with real actual-vs-expected output.
+     - Hidden check: the fix's own tests plus the full test suite of about 1,100 tests.
+     - Runs are offline: no web tools, downloads or clones.
+   - **Result: 8/9** for $2.16 (mean $0.24, **11 turns** against 6–7 on the spec-complete evals).
+   - **The failure is genuine.** In `md-html-comment-paragraph` the builder fixed both reported cases and added five tests of its own. Its fix, however, turned a multi-line comment inside an inline tag into escaped text, which the upstream tests cover.
+   - **Conclusion:** this is the first eval the harness fails, and the first behaviour difference between harness versions that a benchmark can measure (inferring the general rule from a narrow report, and checking nearby cases). Real-bug evals are the direction to grow: more Markdown fixes (the miner found more), then other projects.
+   - **Noise:** at 1 failure in 9, a single run cannot separate harness versions. Improvement cycles on this set need `eval_repeats` ≥ 2.
 2. **An archive instead of a pure hill climb.** Keep the top 3–5 harness variants (as git branches) and sometimes branch from a non-best one; choosing parents by how well their lineage performs (HGM) is better still. Without this, the ratchet will plateau.
 3. **Point the improver at tooling.** Let it add helper scripts or MCP tools, such as context summarisers or test-runner wrappers, not just prose. This is where DGM and SICA found their gains. The genome would need a `plugin/bin/` or `plugin/mcp/` mutable path.
 4. **Drift check.** Every few accepted changes, re-run the original baseline and rotate in fresh held-out evals to detect overfitting to the benchmark.
