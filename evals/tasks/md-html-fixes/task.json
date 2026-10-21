@@ -8,5 +8,5 @@
     "The full test suite passes"
   ],
   "verify_cmd": "python3 -m unittest discover -s tests -q",
-  "source": "https://github.com/Python-Markdown/markdown/commit/07dfa4eb43f7a2ab3181b4f842a960a03a6c1221"
+  "source": "https://github.com/Python-Markdown/markdown/commit/f9253495f5d9919f2fdd5e147832b5fc21330f65"
 }
