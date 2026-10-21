@@ -39,6 +39,8 @@ def cmd_add(h, args):
 
 
 def cmd_run(h, args):
+    if args.no_improve:
+        h.cfg["improve_every"] = 0
     return engine.loop(h, _project(args), once=args.once, until_empty=args.until_empty,
                        max_tasks=args.max_tasks)
 
@@ -135,6 +137,7 @@ def parser():
     s.add_argument("--once", action="store_true", help="work one task and exit")
     s.add_argument("--until-empty", action="store_true", help="exit when nothing is ready")
     s.add_argument("--max-tasks", type=int)
+    s.add_argument("--no-improve", action="store_true", help="build only; never start a self-improvement cycle")
     s.set_defaults(fn=cmd_run)
 
     for name, fn, text in [("status", cmd_status, "show the queue"),
