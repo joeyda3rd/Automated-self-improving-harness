@@ -90,7 +90,7 @@ Triggered every `improve_every` builds, or by hand with `ash improve`.
 ## Safety and failure containment
 
 - **Kill switches**: `ash pause` (writes `state/STOP`, so the loop stops after the current task); a circuit breaker after `max_consecutive_failures` writes `state/PAUSED` and refuses to restart until `ash resume`.
-- **Budgets**: per session, per eval task, per improvement attempt, and a lifetime total.
+- **Budgets**: per session, per eval task, per improvement attempt, and a lifetime total. Every session is recorded in `state/spend.jsonl`. Eval sessions run `eval_workers` at a time, and each reserves its per-session cap before starting, so concurrent sessions cannot overshoot the total together.
 - **Crash recovery**: tasks left `active` by a crash go back to `pending` on the next start. Orchestrator exceptions are caught per task.
 - **No reward hacking by construction**: the verification command, eval checks and gate logic live in the kernel. Eval checks are hidden from every agent role. The orchestrator re-verifies independently instead of trusting `status: done`.
 - **Blast radius**: sessions write only inside their worktree (and `/tmp`), cannot push, cannot touch `.ash/` state (except `notes.md`), and cannot modify the harness while building a project.

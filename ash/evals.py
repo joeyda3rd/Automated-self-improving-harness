@@ -17,6 +17,7 @@ import os
 import shutil
 import subprocess
 import tempfile
+import threading
 import time
 
 from . import gitops
@@ -43,12 +44,16 @@ def _repo_cache(state, url, rev):
     return path
 
 
+_cache_lock = threading.Lock()
+
+
 def lay_seed(state, eval_dir, ws):
     """Create the eval's starting workspace: seed/ copy or pinned git export, then prepare.sh."""
     seed = os.path.join(eval_dir, "seed")
     pinned = load_json(os.path.join(eval_dir, "seed.git.json"))
     if pinned:
-        repo = _repo_cache(state, pinned["url"], pinned["rev"])
+        with _cache_lock:  # parallel runs share one clone per repository
+            repo = _repo_cache(state, pinned["url"], pinned["rev"])
         os.makedirs(ws)
         tar = subprocess.run(["git", "-C", repo, "archive", pinned["rev"], *pinned.get("paths", [])],
                              capture_output=True, check=True).stdout
@@ -108,18 +113,26 @@ def gate_set(harness):
 
 def run_suite(harness, plugin_dir, label, names=None, repeats=None):
     """Score a plugin directory (current harness or a candidate) on the evals named (default: all)."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    jobs = [(d, r) for d in discover(harness) if names is None or os.path.basename(d) in names
+            for r in range(int(repeats or harness.get("eval_repeats", 1)))]
     results, incomplete = [], False
-    for eval_dir in discover(harness):
-        if names is not None and os.path.basename(eval_dir) not in names:
-            continue
-        for r in range(int(repeats or harness.get("eval_repeats", 1))):
-            try:
-                results.append(run_one(harness, eval_dir, plugin_dir, label, r))
-            except BudgetExceeded:
-                incomplete = True
-                break
+
+    def one(job):
+        nonlocal incomplete
         if incomplete:
-            break
+            return None
+        try:
+            return run_one(harness, job[0], plugin_dir, label, job[1])
+        except BudgetExceeded:
+            incomplete = True
+            return None
+
+    # Sessions are independent (own workspace, run dir and session id), so they run side by side;
+    # the budget stays exact because each session reserves its cap before it starts.
+    with ThreadPoolExecutor(max_workers=max(1, int(harness.get("eval_workers", 4)))) as pool:
+        results = [r for r in pool.map(one, jobs) if r is not None]
     summary = summarize(label, results)
     summary["incomplete"] = incomplete  # cut short by the total budget: never cache or accept on it
     append_jsonl(os.path.join(harness.state, "eval_runs.jsonl"), summary)

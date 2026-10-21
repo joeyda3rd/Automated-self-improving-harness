@@ -26,5 +26,6 @@
     "md-*",
     "mi-*"
   ],
-  "improve_eval_repeats": 2
+  "improve_eval_repeats": 2,
+  "eval_workers": 4
 }

@@ -226,7 +226,7 @@ class LoopTests(unittest.TestCase):
         engine.init_project(self.project)
 
     def tearDown(self):
-        for k in ("ASH_CLAUDE_BIN", "FAKE_LAZY_FIRST", "FAKE_TOUCH_KERNEL", "FAKE_FOLLOWUP", "FAKE_LOG", "FAKE_VERDICT"):
+        for k in ("ASH_CLAUDE_BIN", "FAKE_LAZY_FIRST", "FAKE_TOUCH_KERNEL", "FAKE_FOLLOWUP", "FAKE_LOG", "FAKE_VERDICT", "FAKE_SLEEP"):
             os.environ.pop(k, None)
         shutil.rmtree(self.tmp, ignore_errors=True)
 
@@ -277,6 +277,26 @@ class LoopTests(unittest.TestCase):
         self.assertIn("Benchmark tasks the current harness failed", brief)
         self.assertIn("toy", brief)
         self.assertNotIn("test -f done.txt", brief, "hidden check content never reaches the improver")
+
+    def test_eval_sessions_run_in_parallel(self):
+        os.environ["FAKE_SLEEP"] = "0.5"
+        self.harness.cfg.update({"eval_workers": 4})
+        started = __import__("time").time()
+        summary = evals.run_suite(self.harness, self.harness.plugin_dir, "par", repeats=8)
+        elapsed = __import__("time").time() - started
+        self.assertEqual(summary["n"], 8)
+        self.assertEqual(sorted(r["repeat"] for r in summary["results"]), list(range(8)))
+        self.assertLess(elapsed, 8 * 0.5 * 0.6, "8 half-second sessions on 4 workers overlap")
+
+    def test_parallel_sessions_cannot_overspend(self):
+        os.environ["FAKE_SLEEP"] = "0.2"
+        start = engine.spent(self.harness)
+        # each session may cost up to $0.02 (it costs $0.01); only $0.05 is left
+        self.harness.cfg.update({"eval_workers": 4, "eval_budget_usd_per_task": 0.02,
+                                 "budget_usd_total": start + 0.05})
+        summary = evals.run_suite(self.harness, self.harness.plugin_dir, "cap", repeats=12)
+        self.assertTrue(summary["incomplete"])
+        self.assertLessEqual(engine.spent(self.harness), start + 0.05 + 1e-9)
 
     def test_improvement_touching_kernel_is_rejected(self):
         os.environ["FAKE_TOUCH_KERNEL"] = "1"

@@ -17,6 +17,8 @@ if os.environ.get("FAKE_LOG"):
         fh.write(json.dumps({"role": os.environ.get("ASH_ROLE"), "cwd": os.getcwd(), "argv": argv}) + "\n")
 
 role = os.environ.get("ASH_ROLE")
+if os.environ.get("FAKE_SLEEP"):
+    __import__("time").sleep(float(os.environ["FAKE_SLEEP"]))
 resumed = arg("--resume") is not None
 out = {}
 if role == "planner":

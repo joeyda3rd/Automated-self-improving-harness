@@ -3,6 +3,7 @@ import json
 import os
 import re
 import subprocess
+import threading
 import time
 import uuid
 from dataclasses import dataclass, field
@@ -97,9 +98,13 @@ def spent(harness):
     return round(sum(r.get("cost_usd", 0) for r in read_jsonl(path)), 4)
 
 
+_reserved = 0.0  # dollars promised to sessions still running in this process (parallel evals)
+_reserve_lock = threading.Lock()
+
+
 def remaining(harness):
     limit = harness.get("budget_usd_total")
-    return None if not limit else max(0.0, limit - spent(harness))
+    return None if not limit else max(0.0, limit - spent(harness) - _reserved)
 
 
 @dataclass
@@ -152,11 +157,26 @@ def run_session(harness, *, prompt, role, cwd, run_dir, schema=None, plugin_dir=
     system prompt, a budget cap, and the run context in its environment so the
     hooks can find the run record.
     """
-    left = remaining(harness)
-    if left is not None:
-        if left <= 0.01:
-            raise BudgetExceeded(f"total budget ${harness.get('budget_usd_total')} is spent")
-        budget_usd = min(budget_usd or left, left)
+    global _reserved
+    with _reserve_lock:  # concurrent sessions each reserve their cap, so together they cannot overspend
+        left = remaining(harness)
+        if left is not None:
+            if left <= 0.01:
+                raise BudgetExceeded(f"total budget ${harness.get('budget_usd_total')} is spent")
+            budget_usd = min(budget_usd or left, left)
+        reserved = budget_usd if left is not None else 0.0
+        _reserved += reserved
+    try:
+        return _run_session(harness, prompt=prompt, role=role, cwd=cwd, run_dir=run_dir, schema=schema,
+                            plugin_dir=plugin_dir, resume=resume, budget_usd=budget_usd,
+                            extra_env=extra_env, timeout=timeout)
+    finally:
+        with _reserve_lock:
+            _reserved -= reserved
+
+
+def _run_session(harness, *, prompt, role, cwd, run_dir, schema, plugin_dir, resume, budget_usd,
+                 extra_env, timeout):
     plugin_dir = plugin_dir or harness.plugin_dir
     session_id = resume or str(uuid.uuid4())
     cmd = [harness.claude_bin, "-p", prompt, "--output-format", "json",
