@@ -49,6 +49,11 @@ RETRO_SCHEMA = {
             "properties": {"text": {"type": "string"},
                            "scope": {"type": "string", "enum": ["project", "harness"]}},
             "required": ["text", "scope"]}},
+        "lesson_feedback": {"type": "array", "items": {
+            "type": "object",
+            "properties": {"id": {"type": "string"},
+                           "verdict": {"type": "string", "enum": ["helpful", "harmful", "irrelevant"]}},
+            "required": ["id", "verdict"]}},
         "harness_suggestion": {"type": "string"},
     },
     "required": ["lessons"],

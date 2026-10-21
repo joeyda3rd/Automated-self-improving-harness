@@ -53,33 +53,76 @@ def run_one(harness, eval_dir, plugin_dir, label, repeat=0):
             "turns": res.turns, "seconds": res.seconds, "detail": detail}
 
 
-def run_suite(harness, plugin_dir, label):
-    """Score a plugin directory (current harness or a candidate) on every eval."""
+def run_suite(harness, plugin_dir, label, names=None):
+    """Score a plugin directory (current harness or a candidate) on the evals named (default: all)."""
     results = []
     for eval_dir in discover(harness):
+        if names is not None and os.path.basename(eval_dir) not in names:
+            continue
         for r in range(int(harness.get("eval_repeats", 1))):
             results.append(run_one(harness, eval_dir, plugin_dir, label, r))
-    n = len(results) or 1
-    summary = {
-        "label": label, "ts": time.time(), "n": len(results),
-        "pass_rate": round(sum(r["passed"] for r in results) / n, 4),
-        "cost_usd": round(sum(r["cost_usd"] for r in results) / n, 4),
-        "turns": round(sum(r["turns"] for r in results) / n, 2),
-        "results": results,
-    }
+    summary = summarize(label, results)
     append_jsonl(os.path.join(harness.state, "eval_runs.jsonl"), summary)
     return summary
 
 
+def summarize(label, results):
+    n = len(results) or 1
+    per_task = {}
+    for r in results:
+        t = per_task.setdefault(r["eval"], {"runs": 0, "passes": 0, "cost_usd": 0.0})
+        t["runs"] += 1
+        t["passes"] += int(r["passed"])
+        t["cost_usd"] += r["cost_usd"]
+    for t in per_task.values():
+        t["rate"] = round(t["passes"] / t["runs"], 4)
+        t["cost_usd"] = round(t["cost_usd"] / t["runs"], 4)
+    return {
+        "label": label, "ts": time.time(), "n": len(results),
+        "pass_rate": round(sum(r["passed"] for r in results) / n, 4),
+        "cost_usd": round(sum(r["cost_usd"] for r in results) / n, 4),
+        "turns": round(sum(r["turns"] for r in results) / n, 2),
+        "per_task": per_task,
+        "results": results,
+    }
+
+
+def smoke_set(harness):
+    """Evals marked {"smoke": true}: a cheap first stage that rejects obvious regressions."""
+    return {os.path.basename(d) for d in discover(harness)
+            if (load_json(os.path.join(d, "task.json"), {}) or {}).get("smoke")}
+
+
+def regressions(baseline, candidate):
+    """Evals the candidate does worse on than the baseline (paired, per task)."""
+    return sorted(name for name, c in candidate["per_task"].items()
+                  if name in baseline["per_task"] and c["rate"] < baseline["per_task"][name]["rate"])
+
+
 def better(baseline, candidate, min_cost_gain=0.05):
-    """The ratchet. Returns (accepted, reason)."""
-    if candidate["n"] == 0:
+    """The ratchet, paired per task. Returns (accepted, reason).
+
+    LLM runs are noisy and a pooled pass rate hides which tasks moved, so the
+    candidate is compared task by task on the evals both ran:
+      - more tasks improved than regressed (and net gain > 0) => keep;
+      - otherwise, only with no task changed: keep if mean cost fell by at least
+        `min_cost_gain` AND the candidate was cheaper on most tasks;
+      - anything else is discarded.
+    """
+    shared = [n for n in candidate["per_task"] if n in baseline["per_task"]]
+    if not shared:
         return False, "no evals ran"
-    if candidate["pass_rate"] > baseline["pass_rate"]:
-        return True, f"pass rate {baseline['pass_rate']:.0%} -> {candidate['pass_rate']:.0%}"
-    if candidate["pass_rate"] < baseline["pass_rate"]:
-        return False, f"pass rate dropped {baseline['pass_rate']:.0%} -> {candidate['pass_rate']:.0%}"
-    if baseline["cost_usd"] and candidate["cost_usd"] <= baseline["cost_usd"] * (1 - min_cost_gain):
-        return True, f"same pass rate, cost ${baseline['cost_usd']:.3f} -> ${candidate['cost_usd']:.3f}"
-    return False, (f"no measurable gain (pass {candidate['pass_rate']:.0%}, "
-                   f"cost ${baseline['cost_usd']:.3f} -> ${candidate['cost_usd']:.3f})")
+    delta = {n: candidate["per_task"][n]["rate"] - baseline["per_task"][n]["rate"] for n in shared}
+    wins = [n for n, d in delta.items() if d > 0]
+    losses = [n for n, d in delta.items() if d < 0]
+    if len(wins) > len(losses) and sum(delta.values()) > 0:
+        return True, f"improved on {wins}, regressed on {losses or 'none'}"
+    if losses or wins:
+        return False, f"improved on {wins or 'none'}, regressed on {losses}"
+    base_cost = sum(baseline["per_task"][n]["cost_usd"] for n in shared) / len(shared)
+    cand_cost = sum(candidate["per_task"][n]["cost_usd"] for n in shared) / len(shared)
+    cheaper = sum(candidate["per_task"][n]["cost_usd"] < baseline["per_task"][n]["cost_usd"] for n in shared)
+    if base_cost and cand_cost <= base_cost * (1 - min_cost_gain) and cheaper > len(shared) / 2:
+        return True, f"same results, cost ${base_cost:.3f} -> ${cand_cost:.3f} (cheaper on {cheaper}/{len(shared)})"
+    return False, (f"no measurable gain (same results, cost ${base_cost:.3f} -> ${cand_cost:.3f}, "
+                   f"cheaper on {cheaper}/{len(shared)})")

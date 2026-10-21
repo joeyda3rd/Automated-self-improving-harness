@@ -48,7 +48,7 @@ def evidence(harness, window=30):
 def baseline(harness, commit):
     cache_path = os.path.join(harness.state, "eval_cache.json")
     cache = load_json(cache_path, {}) or {}
-    if commit not in cache:
+    if "per_task" not in cache.get(commit, {}):  # missing, or cached before per-task scoring
         log(f"benchmarking baseline {commit[:12]}")
         cache[commit] = evals.run_suite(harness, harness.plugin_dir, f"baseline-{commit[:12]}")
         save_json(cache_path, cache)
@@ -96,11 +96,21 @@ def cycle(harness):
         elif illegal:
             record["reason"] = f"touched immutable paths: {illegal}"
         else:
-            cand = evals.run_suite(harness, os.path.join(wt, "plugin"), f"candidate-{stamp}")
-            accepted, reason = evals.better(base, cand, harness.get("improve_min_cost_gain", 0.05))
+            candidate_plugin = os.path.join(wt, "plugin")
+            smoke = evals.smoke_set(harness)
+            early = evals.run_suite(harness, candidate_plugin, f"candidate-{stamp}-smoke", names=smoke) \
+                if smoke else None
+            if early and evals.regressions(base, early):
+                cand, accepted = early, False
+                reason = f"failed the smoke stage: regressed on {evals.regressions(base, early)}"
+            else:
+                rest = evals.run_suite(harness, candidate_plugin, f"candidate-{stamp}",
+                                       names={os.path.basename(d) for d in evals.discover(harness)} - smoke)
+                cand = evals.summarize(f"candidate-{stamp}", (early["results"] if early else []) + rest["results"])
+                accepted, reason = evals.better(base, cand, harness.get("improve_min_cost_gain", 0.05))
             record.update({"accepted": accepted, "reason": reason,
-                           "baseline": {k: base[k] for k in ("pass_rate", "cost_usd", "turns")},
-                           "candidate": {k: cand[k] for k in ("pass_rate", "cost_usd", "turns")}})
+                           "baseline": {k: base[k] for k in ("pass_rate", "cost_usd", "turns", "per_task")},
+                           "candidate": {k: cand[k] for k in ("pass_rate", "cost_usd", "turns", "per_task")}})
             if accepted:
                 gitops.commit_all(wt, f"ASH self-improvement: {record['change_summary'][:60]}\n\n"
                                       f"Hypothesis: {record['hypothesis']}\nEvidence: {reason}")

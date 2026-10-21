@@ -40,6 +40,8 @@ elif role == "eval":
 elif role == "retro":
     out = {"lessons": [{"text": "Run focused tests while iterating.", "scope": "harness"},
                        {"text": "Feature files live at the repo root.", "scope": "project"}],
+           "lesson_feedback": [{"id": i, "verdict": os.environ.get("FAKE_VERDICT", "helpful")}
+                               for i in __import__("re").findall(r"L-[0-9a-f]{6}", argv[argv.index("-p") + 1])],
            "harness_suggestion": "builders should batch reads"}
 elif role == "improver":
     with open("plugin/skills/build-task/SKILL.md", "a") as fh:

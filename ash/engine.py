@@ -5,10 +5,10 @@ import shutil
 import subprocess
 import time
 
-from . import gitops
+from . import gitops, integrity
 from .claude import BUILD_SCHEMA, PLAN_SCHEMA, RETRO_SCHEMA, run_session
 from .config import append_jsonl, load_json, read_jsonl, save_json
-from .memory import add_lessons, read_lessons
+from .memory import add_lessons, curate, injected, read_lessons
 from .tasks import ACTIVE, BLOCKED, DONE, FAILED, PENDING, TaskStore, card
 
 
@@ -160,6 +160,7 @@ def build(harness, project, task):
     gitops.add_worktree(project.root, wt, branch, base)
 
     env = {"ASH_VERIFY_CMD": project.verify_cmd, "ASH_LESSONS": lessons_env(harness, project)}
+    given = injected(lessons_env(harness, project).split(":"))
     prompt = ("Work this task with the ash:build-task skill. The current directory is your worktree.\n\n"
               + card(task))
     session, total = None, None
@@ -196,7 +197,7 @@ def build(harness, project, task):
             child["depth"] = task.get("depth", 0) + 1
             store.save(child)
     gitops.remove_worktree(project.root, wt, branch)
-    return finish(harness, project, task, run_dir, outcome, total, note=note)
+    return finish(harness, project, task, run_dir, outcome, total, note=note, extra={"lessons": given})
 
 
 def integrate(project, task, wt, branch, note, harness):
@@ -204,6 +205,10 @@ def integrate(project, task, wt, branch, note, harness):
     message = f"{task['id']}: {task['title']}\n\n{note[:2000]}\n\nBuilt by ASH."
     if not gitops.commit_all(wt, message):
         return FAILED, "agent reported done but changed nothing"
+    problems = integrity.check(wt, project.base_branch)
+    if problems and not integrity.allowed_by(task):
+        return FAILED, ("test integrity: " + "; ".join(problems)
+                        + ". Fix the code, not the tests; tests may only be removed or skipped if the task says so.")
     if not gitops.merge(wt, project.base_branch, f"Merge {project.base_branch} into {branch}"):
         return FAILED, "conflict with the latest base; redo on top of it"
     ok, output = verify(project.verify_cmd, wt, harness.get("verify_timeout_seconds", 900))
@@ -226,7 +231,7 @@ def _accumulate(total, res):
     return total
 
 
-def finish(harness, project, task, run_dir, outcome, res, note=""):
+def finish(harness, project, task, run_dir, outcome, res, note="", extra=None):
     """Record the outcome on the task, in the run directory and in the metrics ledger."""
     store = TaskStore(project)
     task = store.get(task["id"]) or task
@@ -248,6 +253,7 @@ def finish(harness, project, task, run_dir, outcome, res, note=""):
         "run_dir": run_dir, "note": note[:300],
     }
     record.update(run_stats(run_dir))
+    record.update(extra or {})
     save_json(os.path.join(run_dir, "result.json"), dict(record, output=res.output if res else {}))
     append_jsonl(harness.metrics, record)
     log(f"{task['id']} {task.get('kind', 'build')} -> {outcome} (${record['cost_usd']}, {record['turns']} turns)")
@@ -260,6 +266,7 @@ def retro(harness, project, record):
     """Fast loop: distil lessons from one run into memory injected at every session start."""
     run_dir = record["run_dir"]
     prompt = (f"Run the ash:retrospective skill on the run recorded in {run_dir} "
+              f"(lessons the session was given: {', '.join(record.get('lessons', [])) or 'none'}) "
               f"(outcome: {record['outcome']}, cost ${record['cost_usd']}, {record['turns']} turns, "
               f"{record.get('gate_failures', 0)} stop-gate bounces, {record.get('tool_errors', 0)} tool errors).")
     res = run_session(harness, prompt=prompt, role="retro", cwd=run_dir, run_dir=os.path.join(run_dir, "retro"),
@@ -271,12 +278,18 @@ def retro(harness, project, record):
     added = add_lessons(harness.learnings, [l["text"] for l in lessons if l.get("scope") == "harness"], source, cap)
     added += add_lessons(project.lessons_path(harness), [l["text"] for l in lessons if l.get("scope") == "project"],
                          source, cap)
+    for vote in res.output.get("lesson_feedback") or []:
+        if vote.get("id") in record.get("lessons", []):
+            append_jsonl(os.path.join(harness.state, "lesson_votes.jsonl"),
+                         {"ts": time.time(), "task": record["task"], **vote})
+    pruned = curate(harness, [harness.learnings, project.lessons_path(harness)])
     if res.output.get("harness_suggestion"):
         append_jsonl(os.path.join(harness.state, "suggestions.jsonl"),
                      {"ts": time.time(), "task": record["task"], "outcome": record["outcome"],
                       "suggestion": res.output["harness_suggestion"]})
     append_jsonl(harness.metrics, {"ts": time.time(), "kind": "retro", "task": record["task"],
-                                   "cost_usd": round(res.cost_usd, 4), "lessons_added": len(added)})
+                                   "cost_usd": round(res.cost_usd, 4), "lessons_added": len(added),
+                                   "lessons_pruned": len(pruned)})
     return added
 
 
