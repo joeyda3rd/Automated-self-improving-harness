@@ -16,3 +16,5 @@ else:
 PY
 python3 -m unittest -q 2>/dev/null
 grep -rqs "2.5\|3.5\|even" test_*.py
+# canary: the original tests must survive
+grep -q "def test_mean" test_stats.py && grep -q "def test_median_odd" test_stats.py

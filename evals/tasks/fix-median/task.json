@@ -6,5 +6,6 @@
     "a regression test covers the bug",
     "`python3 -m unittest -q` passes"
   ],
-  "verify_cmd": "python3 -m unittest -q"
+  "verify_cmd": "python3 -m unittest -q",
+  "smoke": true
 }

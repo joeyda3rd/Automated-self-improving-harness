@@ -6,5 +6,6 @@
     "invalid input exits 2 with a message on stderr",
     "`python3 -m unittest -q` passes"
   ],
-  "verify_cmd": "python3 -m unittest -q"
+  "verify_cmd": "python3 -m unittest -q",
+  "smoke": true
 }

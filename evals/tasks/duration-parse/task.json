@@ -1,0 +1,11 @@
+{
+  "title": "Duration parsing and formatting library",
+  "spec": "The repository is empty. Create `duration.py` with two functions.\n\n`parse_duration(text: str) -> int` returns whole seconds. Grammar: one or more components `<number><unit>`, units `d` (86400 s), `h`, `m`, `s`, lowercase only. Units must appear in strictly decreasing order, each at most once (so `1m1h` and `1h1h` are invalid). Components may be separated by exactly one space or by nothing; leading and trailing whitespace is ignored. Numbers are non-negative decimal integers, except that the LAST component may have a fractional part (`1.5h`, `1h 1.5m`); a fraction anywhere else is invalid. The total is rounded to the nearest second, halves rounding up (`0.5s` -> 1). Raise `ValueError` for anything else, including the empty string, unknown or uppercase units, a number without a unit, a unit without a number, signs, and double spaces between components.\n\n`format_duration(seconds: int) -> str` returns the canonical form, largest units first, omitting zero components: 3723 -> `1h2m3s`, 90061 -> `1d1h1m1s`, 3600 -> `1h`, 0 -> `0s`. Negative input raises `ValueError`. For every valid canonical string s, `format_duration(parse_duration(s)) == s`.\n\nAdd unit tests runnable with `python3 -m unittest -q`.",
+  "acceptance": [
+    "all grammar rules above are enforced, with ValueError for invalid input",
+    "rounding is to the nearest second, halves up",
+    "format_duration produces the canonical form and round-trips",
+    "`python3 -m unittest -q` passes"
+  ],
+  "verify_cmd": "python3 -m unittest -q"
+}

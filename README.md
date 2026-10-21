@@ -56,7 +56,11 @@ To watch the loop from inside Claude Code, load the console mod in a session ope
 ## How it improves
 
 - **Fast loop (every run).** A retrospective session reads the run's telemetry, stop-gate history, guard denials and transcript, and distils up to three lessons. They go into capped, deduplicated memory files that the SessionStart hook injects into every later session.
-- **Slow loop (every `improve_every` builds).** An improver session edits the harness's own skills, subagents or role prompts in a worktree, guided by evidence such as failure modes, costs, retro suggestions and earlier rejected ideas. The candidate runs on the eval suite. It is merged only if the pass rate goes up, or holds while cost drops. Changes to the kernel are blocked by the guard and rejected by a diff check.
+- **Slow loop (every `improve_every` builds).** An improver session edits the harness's own skills, subagents or role prompts in a worktree, guided by evidence such as failure modes, costs, retro suggestions and earlier rejected ideas. The candidate runs on the eval suite, starting with a cheap smoke stage. It is merged only if more eval tasks improve than regress, or results are identical and it is cheaper on most tasks. Changes to the kernel are blocked by the guard and rejected by a diff check.
+- **Memory hygiene.** Lessons carry ids. Retros rate the lessons a run was given, and lessons rated harmful, or with a poor track record, are deleted.
+- **Integrity.** A `done` result is refused until the project's test command passes. Before merging, a diff that deletes or skips tests is rejected.
+
+How the design was checked against Claude Code's real hook behaviour and prior work on self-improving agents (Darwin Gödel Machine, SICA, memory research) is in [docs/RESEARCH.md](docs/RESEARCH.md).
 
 ## Development
 

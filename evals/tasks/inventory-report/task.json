@@ -1,0 +1,11 @@
+{
+  "title": "Fix the inventory loader and add a low-stock report",
+  "spec": "The `inventory` package loads a CSV of stock items. `python3 -m unittest -q` currently fails: `test_loader.py` is correct and must not be modified; fix the code so it passes.\n\nThen:\n1. `load_csv` must also skip blank lines and rows whose `sku` is empty after stripping whitespace.\n2. Add `low_stock(items, thresholds, default=5)` to `inventory/report.py`: returns the items whose `qty` is strictly below the threshold for their category (`thresholds` maps category -> int; categories not in it use `default`), sorted by category, then qty ascending, then sku.\n3. Add a CLI command: `python3 -m inventory low-stock FILE [--default N]` prints one line `sku,category,qty` per low-stock item in that order (thresholds: none, so every category uses the default, which is 5 unless `--default` is given). Keep the existing `value` command working.\n\nAdd tests for the new behaviour.",
+  "acceptance": [
+    "the existing test_loader.py passes unmodified",
+    "blank lines and rows with an empty sku are skipped",
+    "low_stock applies per-category thresholds with a default and sorts by (category, qty, sku)",
+    "the low-stock CLI prints sku,category,qty lines and honours --default"
+  ],
+  "verify_cmd": "python3 -m unittest -q"
+}

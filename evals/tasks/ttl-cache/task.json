@@ -1,0 +1,10 @@
+{
+  "title": "LRU cache with time-to-live",
+  "spec": "The repository is empty. Create `cache.py` with `class TTLCache(capacity, ttl, clock=time.monotonic)`.\n\n- `capacity` must be an int >= 1 and `ttl` a number > 0, otherwise `ValueError`.\n- `put(key, value)`: stores the value and records its put time `clock()`. Putting an existing key replaces its value, resets its put time, and makes it most recently used; it never evicts anything.\n- An entry is expired when `clock() - put_time >= ttl`. Expired entries behave as absent everywhere.\n- `get(key, default=None)`: returns the value (and makes the entry most recently used) or `default` when absent/expired. `get` does NOT extend the entry's lifetime.\n- `key in cache` reports presence of a non-expired entry and does NOT change recency.\n- `len(cache)` counts non-expired entries.\n- Putting a NEW key into a cache holding `capacity` entries first discards all expired entries; only if it is still full is the least recently used entry evicted.\n\nInject `clock` in your tests instead of sleeping. Add unit tests runnable with `python3 -m unittest -q`.",
+  "acceptance": [
+    "expiry, recency and eviction rules exactly as specified",
+    "expired entries are discarded before any live entry is evicted",
+    "`python3 -m unittest -q` passes"
+  ],
+  "verify_cmd": "python3 -m unittest -q"
+}

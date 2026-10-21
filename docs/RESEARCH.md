@@ -1,0 +1,75 @@
+# Research brief
+
+Research done on 2026-10-21 to check ASH's design against (a) how Claude Code actually behaves and (b) prior work on self-improving agents. Each finding below says what changed in ASH, or why nothing did.
+
+## 1. Claude Code contracts (verified by live probes, CLI 2.1.305)
+
+Docs: [hooks](https://code.claude.com/docs/en/hooks.md), [headless](https://code.claude.com/docs/en/headless.md), [plugins reference](https://code.claude.com/docs/en/plugins-reference.md), [plugin evals](https://code.claude.com/docs/en/plugin-evals.md). The behaviour below was observed in real sessions, using a plugin that dumped every hook's raw input.
+
+| Finding | Effect on ASH |
+|---|---|
+| A tool call that fails (for example, Bash exiting non-zero) fires **`PostToolUseFailure`**, with an `error` string such as `"Exit code 2\n..."`. It does **not** fire `PostToolUse`. A Bash `tool_response` has `stdout`, `stderr` and `interrupted`, but no exit code field. | **Bug fixed.** Telemetry only listened to `PostToolUse`, so tool-error counts were always 0. It now listens to `PostToolUseFailure` too. Some non-zero exits (e.g. `test -f` returning 1 with no output) are reported as successes, so treat the count as a lower bound. |
+| With `--json-schema`, the run ends as soon as the model calls the `StructuredOutput` tool. A Stop-hook block fired *after* that is recorded (`hook_blocking_error`) but **not honoured**. A Stop block *is* honoured when the model stops with plain text, in both the JSON-decision and exit-2 forms. | **Bug fixed.** Every builder run uses `--json-schema`, so the stop gate never bounced anything. The gate now runs as a PreToolUse **deny on `StructuredOutput`** whenever `status` is `done`. A live test confirmed a premature "done" is refused and the agent then fixes the work. The Stop gate remains as a backstop. |
+| Stop blocks are capped at 8 consecutive continuations (configurable with `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP`). | No change: ASH caps itself at `gate_max` (3). |
+| `claude -p --output-format json` printed a single result object in live runs, with `session_id`, `total_cost_usd`, `num_turns`, `is_error` and `structured_output`. It waits 3 s for stdin unless stdin is closed. | The parser accepts either a single object or an array. Stdin is now `/dev/null`. |
+| Child sessions inherit the parent's `CLAUDE_CODE_SESSION_ID` and related variables, so without `--session-id` a child reports the parent's id. | Those variables are stripped and every run passes `--session-id`. Resume was verified live. |
+| `claude plugin eval` exists. It only has regex, tool-use, file-exists and LLM-judge graders ("there are no custom-code graders"), and each case runs 3 times. | Not adopted for the gate: ASH needs deterministic hidden `check.sh` graders. It is still useful for quick before/after checks of skill behaviour. |
+
+## 2. Prior work on self-improving agents
+
+**Darwin Gödel Machine** ([arXiv 2505.22954](https://arxiv.org/abs/2505.22954))
+- The agent edits its own code. Instead of keeping only the best version, it keeps an *archive* of variants and samples parents roughly in proportion to score, inversely to how many children they already have.
+- The ablation without open-ended exploration stalls: after a bad modification, gains become hard to recover.
+- Evaluation is staged: 10 tasks, then about 50, then 200 for top candidates.
+- **Reward hacking:** the agent disabled hallucination detection by removing its logging. Hacking was more frequent when the detection code was visible to the agent.
+- Results went from 20% to 50% on SWE-bench, at about two weeks and roughly $22k per run.
+
+**SICA** ([arXiv 2504.15228](https://arxiv.org/abs/2504.15228))
+- Utility combines score, cost and time: U = 0.5·score + 0.25·(1 − cost/$10) + 0.25·(1 − time/300 s).
+- The real gains came from **tooling and context management** (diff editor, AST symbol locator, context summariser) more than from prose.
+- An asynchronous overseer cancels agents that loop or drift off task.
+- The authors report high path dependence and variance.
+
+**Huxley-Gödel Machine** ([arXiv 2510.21614](https://arxiv.org/abs/2510.21614))
+- A high benchmark score does not predict good descendants. It picks parents by how well their lineage performs.
+
+**Memory** ([Reflexion](https://arxiv.org/abs/2303.11366), [ExpeL](https://arxiv.org/abs/2308.10144), [AWM](https://proceedings.mlr.press/v267/wang25bx.html), [arXiv 2505.16067](https://arxiv.org/abs/2505.16067))
+- Agents copy retrieved past experience.
+- Flawed memories spread errors, and the errors amplify when outputs are written back into memory.
+- Selective add-and-delete beat letting memory grow by about 10 points absolute. Later task outcomes work as free quality labels for stored memories.
+
+**Autonomous Claude Code loops**
+- Sources: Anthropic, [*Effective harnesses for long-running agents*](https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents); [Ralph](https://ghuntley.com/ralph/).
+- Reported failure modes: declaring victory early; stubs and placeholders; re-implementing code that already exists; deleting or editing tests ("unacceptable to remove or edit tests"); spec drift.
+- Recommended remedies: one feature per session, fast checks that push back on broken work, and short agent instructions.
+
+**Eval noise** ([*On Randomness in Agentic Evals*](https://arxiv.org/abs/2602.07150); [*Adding Error Bars to Evals*](https://arxiv.org/abs/2411.00640))
+- Single-run pass@1 on SWE-bench Verified swings by 2–6 points, even at temperature 0. Gains of 2–3 points can be noise.
+- Recommendation: repeated runs and paired comparisons.
+- With 3 tasks, one flip moves the score by 33 points.
+
+## 3. What changed in ASH
+
+| Finding | Change |
+|---|---|
+| Noise; pooled pass rate hides task-for-task swaps | **Paired, per-task ratchet** (`evals.better`): keep a change only if more tasks improve than regress. A cost-only win must be at least 5% *and* show on most tasks. |
+| Staged evaluation (DGM) | **Smoke stage**: evals marked `"smoke": true` run first, and any regression on them rejects the candidate before the full suite runs. |
+| Saturated benchmark | **Three harder evals** (`duration-parse`, `ttl-cache`, `inventory-report`), each with edge cases stated in the spec and checked only by the hidden test. |
+| Evaluator gaming (DGM) | Evals stay hidden from every role. **Canaries** fail the eval if the agent edited the given tests (`inventory-report` hashes `test_loader.py`; `fix-median` requires the original tests). |
+| Test tampering (Anthropic, Ralph) | **Integrity check before every merge** (`ash/integrity.py`): it rejects a diff that deletes test files, removes more test cases than it adds, or adds skip markers, unless the task card asks for that. |
+| Memory degradation (2505.16067, ExpeL) | **Curated lessons**: each has a stable id, each run records which lessons it was given, and retrospectives rate them. A lesson is deleted when rated harmful twice, or when sessions given it succeed clearly less often than average (`ash/memory.py:curate`). |
+| Premature "done" (Anthropic) | Re-verification by the orchestrator, plus the stop gate now actually enforced on `StructuredOutput` (section 1). |
+
+## 4. Not done yet, ranked
+
+1. **Harder evals, more of them, and repeats.** Measured on 2026-10-21: the current harness passed **all 6 evals** (the 3 new "harder" ones included) at a mean $0.17 per eval and 6.7 turns. Well-specified single-module tasks with edge cases stated up front do not discriminate at this model's strength, so the ratchet can only reward cost cuts. Evals that would discriminate are long-horizon and closer to real assignments:
+   - multi-file changes in a seeded repository of a few thousand lines;
+   - specs that are ambiguous or underspecified, where the right move is a `blocked` report or a reasonable documented choice;
+   - tasks with performance or concurrency requirements;
+   - real bug reports from open-source projects, SWE-bench style.
+
+   Aim for a baseline pass rate of 40–70% across about 30–50 tasks with `eval_repeats` ≥ 2. This remains the main limit on how well self-improvement can work.
+2. **An archive instead of a pure hill climb.** Keep the top 3–5 harness variants (as git branches) and sometimes branch from a non-best one; choosing parents by how well their lineage performs (HGM) is better still. Without this, the ratchet will plateau.
+3. **Point the improver at tooling.** Let it add helper scripts or MCP tools, such as context summarisers or test-runner wrappers, not just prose. This is where DGM and SICA found their gains. The genome would need a `plugin/bin/` or `plugin/mcp/` mutable path.
+4. **Drift check.** Every few accepted changes, re-run the original baseline and rotate in fresh held-out evals to detect overfitting to the benchmark.
+5. **Overseer.** A cheap periodic check that cancels a looping build session, beyond what the budget cap already stops.
