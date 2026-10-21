@@ -69,6 +69,17 @@ Docs: [hooks](https://code.claude.com/docs/en/hooks.md), [headless](https://code
    - real bug reports from open-source projects, SWE-bench style.
 
    Aim for a baseline pass rate of 40–70% across about 30–50 tasks with `eval_repeats` ≥ 2. This remains the main limit on how well self-improvement can work.
+
+   **Second measurement, also 2026-10-21.**
+   - **Setup:** 10 harder evals written to the brief above: cron-next, csv-query, invoice-rounding (7 interacting bugs behind a symptom-only report), three-way-merge, config-layering, ledger-idempotency, rate-limiter-concurrency, semver-range, text-wrap-unicode, plugin-registry-refactor (about 1,000 lines). Each was validated against seeded mistakes that fail its check.
+   - **Result:** the harness passed **10/10 on the first attempt** for $2.47 (mean $0.25, 7.5 turns). No stop-gate bounces, no guard denials, and no transcript touched the eval material.
+   - **Conclusion:** a task whose spec states every rule is solved first try at this model's strength, however many rules there are. Discriminating evals will need what spec-complete tasks lack:
+     - an underspecified intent the builder must infer from the codebase;
+     - real repositories of tens of thousands of lines, e.g. real upstream issues and fixes cloned from open-source projects;
+     - long-horizon assignments that the planner must decompose;
+     - judgement calls that are graded, such as knowing when to report `blocked`.
+
+     Until such evals exist, the ratchet can still optimise **cost and turns**: 16 tasks give the paired cost rule enough breadth.
 2. **An archive instead of a pure hill climb.** Keep the top 3–5 harness variants (as git branches) and sometimes branch from a non-best one; choosing parents by how well their lineage performs (HGM) is better still. Without this, the ratchet will plateau.
 3. **Point the improver at tooling.** Let it add helper scripts or MCP tools, such as context summarisers or test-runner wrappers, not just prose. This is where DGM and SICA found their gains. The genome would need a `plugin/bin/` or `plugin/mcp/` mutable path.
 4. **Drift check.** Every few accepted changes, re-run the original baseline and rotate in fresh held-out evals to detect overfitting to the benchmark.
