@@ -150,6 +150,8 @@ def guard(event):
     tin = event.get("tool_input") or {}
     cwd = event.get("cwd") or os.getcwd()
     hidden = _hidden_roots(cwd)
+    if tool == "StructuredOutput":
+        return result_gate(event)
     if tool in ("Read", "Grep", "Glob"):
         path = tin.get("file_path") or tin.get("path") or cwd
         path = path if os.path.isabs(path) else os.path.join(cwd, path)
@@ -184,35 +186,38 @@ def telemetry(event):
     run_dir = env("ASH_RUN_DIR")
     if not run_dir:
         return
+    # Claude Code reports a failed tool call (e.g. Bash exiting non-zero) as a separate
+    # PostToolUseFailure event carrying an `error` string; PostToolUse means it succeeded.
+    failed = event.get("hook_event_name") == "PostToolUseFailure"
     resp = event.get("tool_response")
-    is_error = False
-    if isinstance(resp, dict):
-        is_error = bool(resp.get("is_error") or resp.get("error") or resp.get("interrupted"))
-        code = resp.get("exit_code", resp.get("returnCode"))
-        if isinstance(code, int) and code != 0:
-            is_error = True
+    interrupted = isinstance(resp, dict) and bool(resp.get("interrupted"))
     tin = event.get("tool_input") or {}
     summary = tin.get("command") or tin.get("file_path") or tin.get("pattern") or tin.get("description") or ""
     append_jsonl(os.path.join(run_dir, "tools.jsonl"), {
         "ts": time.time(),
         "event": event.get("hook_event_name"),
         "tool": event.get("tool_name") or event.get("agent_type") or "",
-        "error": is_error,
+        "error": failed or interrupted,
         "input": str(summary)[:200],
+        **({"message": str(event.get("error", ""))[:300]} if failed else {}),
     })
 
 
-# -------------------------------------------------------------------- stop-gate
+# ------------------------------------------------------------------------- gate
 
-def stop_gate(event):
+def _gate(cwd, where):
+    """Run the verification command. Returns a refusal message, or None to let the agent finish.
+
+    Gives up (returns None) after ASH_GATE_MAX failures: the orchestrator re-verifies
+    independently, so a stuck agent ends its session instead of looping on the gate.
+    """
     run_dir = env("ASH_RUN_DIR")
     verify = env("ASH_VERIFY_CMD")
     if not run_dir or not verify or env("ASH_ROLE") not in ("builder", "eval"):
-        return
+        return None
     gate_log = os.path.join(run_dir, "gate.jsonl")
     failures = sum(1 for l in tail_lines(gate_log, 1000) if '"passed": false' in l)
     max_attempts = int(env("ASH_GATE_MAX", "3"))
-    cwd = event.get("cwd") or os.getcwd()
     started = time.time()
     try:
         proc = subprocess.run(verify, shell=True, cwd=cwd, capture_output=True, text=True,
@@ -220,13 +225,32 @@ def stop_gate(event):
         passed, output = proc.returncode == 0, (proc.stdout + proc.stderr)
     except subprocess.TimeoutExpired:
         passed, output = False, "verification timed out"
-    append_jsonl(gate_log, {"ts": started, "passed": passed, "seconds": round(time.time() - started, 1)})
+    append_jsonl(gate_log, {"ts": started, "passed": passed, "where": where,
+                            "seconds": round(time.time() - started, 1)})
     if passed or failures + 1 >= max_attempts:
-        return  # let the session end; the orchestrator re-verifies independently
-    emit({"decision": "block", "reason": (
-        f"ASH stop gate: `{verify}` failed (attempt {failures + 1}/{max_attempts}). "
-        "Do not stop yet. Diagnose the failure below, fix the code (never the tests' intent), "
-        "and finish again.\n\n" + output[-4000:])})
+        return None
+    return (f"ASH gate: `{verify}` failed (attempt {failures + 1}/{max_attempts}). "
+            "You are not done. Diagnose the failure below, fix the code (never the tests' intent), "
+            "and then report your result again.\n\n" + output[-4000:])
+
+
+def result_gate(event):
+    """PreToolUse on StructuredOutput: a run with --json-schema ends when the result is
+    submitted, and a Stop block after that is not honoured, so "done" is gated here."""
+    if (event.get("tool_input") or {}).get("status") != "done":
+        return None  # blocked/failed reports are always accepted
+    reason = _gate(event.get("cwd") or os.getcwd(), "result")
+    if reason:
+        emit({"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny",
+                                     "permissionDecisionReason": reason}})
+    return None
+
+
+def stop_gate(event):
+    """Backstop for sessions that end without structured output."""
+    reason = _gate(event.get("cwd") or os.getcwd(), "stop")
+    if reason:
+        emit({"decision": "block", "reason": reason})
 
 
 # ------------------------------------------------------- pre-compact / session-end

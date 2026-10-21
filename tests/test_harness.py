@@ -96,6 +96,15 @@ class HookTests(unittest.TestCase):
         os.remove(os.path.join(self.run_dir, "gate.jsonl"))
         self.assertEqual(hook("stop-gate", {"cwd": self.ws}, **env), {})
 
+    def test_result_gate_refuses_unverified_done(self):
+        env = dict(self.env, ASH_VERIFY_CMD="test -f ok.txt")
+        done = {"tool_name": "StructuredOutput", "tool_input": {"status": "done", "summary": "x"}, "cwd": self.ws}
+        self.assertTrue(denied(hook("guard", done, **env)))
+        blocked = dict(done, tool_input={"status": "blocked", "summary": "need creds"})
+        self.assertFalse(denied(hook("guard", blocked, **env)), "honest blocked reports always pass")
+        open(os.path.join(self.ws, "ok.txt"), "w").close()
+        self.assertFalse(denied(hook("guard", done, **env)))
+
     def test_session_start_injects_lessons_and_notes(self):
         lessons = os.path.join(self.tmp, "lessons.md")
         with open(lessons, "w") as fh:
@@ -110,10 +119,15 @@ class HookTests(unittest.TestCase):
             self.assertIn(needle, ctx)
 
     def test_telemetry_records_errors(self):
-        hook("telemetry", {"hook_event_name": "PostToolUse", "tool_name": "Bash",
-                           "tool_input": {"command": "false"}, "tool_response": {"exit_code": 1}}, **self.env)
+        # payload shapes captured from a real Claude Code 2.1 session
+        hook("telemetry", {"hook_event_name": "PostToolUseFailure", "tool_name": "Bash",
+                           "tool_input": {"command": "ls /nope"}, "error": "Exit code 2\nls: cannot access"},
+             **self.env)
+        hook("telemetry", {"hook_event_name": "PostToolUse", "tool_name": "Bash", "tool_input": {"command": "echo hi"},
+                           "tool_response": {"stdout": "hi", "stderr": "", "interrupted": False}}, **self.env)
         rows = read_jsonl(os.path.join(self.run_dir, "tools.jsonl"))
-        self.assertEqual((rows[0]["tool"], rows[0]["error"]), ("Bash", True))
+        self.assertEqual([(r["tool"], r["error"]) for r in rows], [("Bash", True), ("Bash", False)])
+        self.assertIn("Exit code 2", rows[0]["message"])
 
 
 class LoopTests(unittest.TestCase):

@@ -149,7 +149,8 @@ def run_session(harness, *, prompt, role, cwd, run_dir, schema=None, plugin_dir=
     os.makedirs(run_dir, exist_ok=True)
     started = time.time()
     try:
-        proc = subprocess.run(cmd, cwd=cwd, env=env, capture_output=True, text=True, timeout=timeout)
+        proc = subprocess.run(cmd, cwd=cwd, env=env, stdin=subprocess.DEVNULL, capture_output=True,
+                              text=True, timeout=timeout)
         stdout, stderr, code = proc.stdout, proc.stderr, proc.returncode
     except subprocess.TimeoutExpired as exc:
         stdout, stderr, code = exc.stdout or "", f"session timed out after {timeout}s", -1
