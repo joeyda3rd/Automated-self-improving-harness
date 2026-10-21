@@ -80,7 +80,10 @@ def cmd_improve(h, args):
 
 
 def cmd_eval(h, args):
-    summary = evals.run_suite(h, os.path.abspath(args.plugin_dir or h.plugin_dir), args.label)
+    if args.repeats:
+        h.cfg["eval_repeats"] = args.repeats
+    summary = evals.run_suite(h, os.path.abspath(args.plugin_dir or h.plugin_dir), args.label,
+                              names=set(args.only) if args.only else None)
     if summary.get("incomplete"):
         print(f"stopped early: total budget ${h.get('budget_usd_total')} reached (spent ${engine.spent(h):.2f})")
     print(json.dumps({k: v for k, v in summary.items() if k != "results"}, indent=2))
@@ -145,6 +148,8 @@ def parser():
     s = sub.add_parser("eval", help="benchmark the harness (or a candidate plugin dir)")
     s.add_argument("--plugin-dir")
     s.add_argument("--label", default="manual")
+    s.add_argument("--only", action="append", help="eval name to run (repeatable; default: all)")
+    s.add_argument("--repeats", type=int, help="runs per eval (default: eval_repeats in harness.json)")
     s.set_defaults(fn=cmd_eval)
     return ap
 
