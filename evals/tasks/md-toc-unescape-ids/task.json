@@ -1,0 +1,12 @@
+{
+  "title": "Backslash-escaped characters in headers produce garbage TOC ids",
+  "spec": "This is the Python-Markdown library (Python 3, no dependencies). Run the tests with `python3 -m unittest discover -s tests -q`.\n\nWith the TOC extension, a header that contains a backslash-escaped character gets an id containing the character's code point number instead of the character.\n\n```\nmarkdown.markdown(r'# escaped\\_character', extensions=['markdown.extensions.toc'])\n```\n\nExpected:\n```\n<h1 id=\"escaped_character\">escaped_character</h1>\n```\n\nActual:\n```\n<h1 id=\"escaped95character\">escaped_character</h1>\n```\n\nAnother example: `# 1\\. Intro` renders as `<h1 id=\"146-intro\">1. Intro</h1>`; it should be `id=\"1-intro\"`. The header text itself is fine. An escaped character should contribute to the id exactly as the unescaped character would, so `\\_` keeps the underscore and `\\.` is dropped like any other punctuation.",
+  "acceptance": [
+    "`# escaped\\_character` gets id `escaped_character`",
+    "Other backslash escapes in headers (e.g. `\\.`) produce ids as if the character were unescaped",
+    "A regression test is added",
+    "The full test suite passes"
+  ],
+  "verify_cmd": "python3 -m unittest discover -s tests -q",
+  "source": "https://github.com/Python-Markdown/markdown/commit/15cbaef36e7a121db7d41535793ebf98533b2d8e"
+}

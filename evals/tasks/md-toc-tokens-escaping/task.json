@@ -1,0 +1,12 @@
+{
+  "title": "`toc_tokens` names are not HTML-escaped, unlike the rendered TOC",
+  "spec": "This is the Python-Markdown library (Python 3, no dependencies). Run the tests with `python3 -m unittest discover -s tests -q`.\n\nI build my own navigation from `md.toc_tokens` and insert each `name` into HTML. Headers containing `<`, `>` or `&` come through unescaped, so the token name disagrees with `md.toc` and is unsafe to insert.\n\n```\nmd = markdown.Markdown(extensions=['markdown.extensions.toc'])\nmd.convert('# Foo > & bar')\nmd.toc_tokens\n```\n\nExpected:\n```\n[{'level': 1, 'id': 'foo-bar', 'name': 'Foo &gt; &amp; bar', 'children': []}]\n```\n\nActual:\n```\n[{'level': 1, 'id': 'foo-bar', 'name': 'Foo > & bar', 'children': []}]\n```\n\n`md.toc` is already correct (`<a href=\"#foo-bar\">Foo &gt; &amp; bar</a>`). A header that was written as `&amp;` already gives `Foo &amp; bar` in the tokens, so names are meant to be HTML text. The same applies to a label set with `attr_list`: `# Header 4 { data-toc-label=\"Foo > Baz\" }` (extensions `markdown.extensions.toc` and `markdown.extensions.attr_list`) should give the name `Foo &gt; Baz` but gives `Foo > Baz`. Any token `name` should match the text shown in the HTML TOC: special characters escaped exactly once, with markup in labels still stripped to text.",
+  "acceptance": [
+    "The reported header gives the token name `Foo &gt; &amp; bar`",
+    "`data-toc-label` values with special characters are escaped the same way in `toc_tokens`, and labels containing tags still reduce to plain text",
+    "A regression test is added",
+    "The full test suite passes"
+  ],
+  "verify_cmd": "python3 -m unittest discover -s tests -q",
+  "source": "https://github.com/Python-Markdown/markdown/commit/74c0166c6903b07b3b2b9cbba36705d1414cbaf7"
+}
