@@ -91,6 +91,9 @@ class HookTests(unittest.TestCase):
         self.assertTrue(denied(self.call("Read", {"file_path": check}, ASH_ROLE="eval")))
         self.assertTrue(denied(self.call("Bash", {"command": f"cat {check}"}, ASH_ROLE="improver")))
         self.assertTrue(denied(self.call("Grep", {"pattern": "x", "path": "evals"}, ASH_ROLE="improver")))
+        runs = os.path.join(self.home, "state", "eval_runs.jsonl")
+        self.assertTrue(denied(self.call("Read", {"file_path": runs}, ASH_ROLE="improver")),
+                        "recorded check output is hidden from the improver")
         self.assertTrue(denied(self.call("Bash", {"command": "ls evals/tasks"}, ASH_ROLE="improver")))
         self.assertFalse(denied(self.call("Bash", {"command": "pytest evals/test_model.py"})),
                          "a project's own evals/ directory stays usable for builders")
@@ -206,7 +209,8 @@ class LoopTests(unittest.TestCase):
             shutil.copytree(os.path.join(ROOT, part), os.path.join(self.home, part),
                             ignore=shutil.ignore_patterns("__pycache__"))
         cfg = json.loads(read(os.path.join(ROOT, "harness.json")))
-        cfg.update({"improve_every": 2, "idle_sleep_seconds": 0, "max_consecutive_failures": 5})
+        cfg.update({"improve_every": 2, "idle_sleep_seconds": 0, "max_consecutive_failures": 5,
+                    "improve_evals": ["*"], "improve_eval_repeats": 1})
         save_json(os.path.join(self.home, "harness.json"), cfg)
         toy = os.path.join(self.home, "evals", "tasks", "toy")
         os.makedirs(toy)
@@ -269,6 +273,10 @@ class LoopTests(unittest.TestCase):
         self.assertTrue(record["accepted"], record)
         self.assertEqual(set(record["candidate"]["per_task"]), {"toy"}, "saturated evals are not run")
         self.assertEqual(record["candidate"]["per_task"]["toy"]["runs"], 2)
+        brief = read(os.path.join(record["run_dir"], "evidence.md"))
+        self.assertIn("Benchmark tasks the current harness failed", brief)
+        self.assertIn("toy", brief)
+        self.assertNotIn("test -f done.txt", brief, "hidden check content never reaches the improver")
 
     def test_improvement_touching_kernel_is_rejected(self):
         os.environ["FAKE_TOUCH_KERNEL"] = "1"

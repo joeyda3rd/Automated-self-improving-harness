@@ -56,6 +56,21 @@ def cache_key(harness, commit):
     return f"{commit}|{hashlib.sha1(names.encode()).hexdigest()[:8]}|r{gate_repeats(harness)}"
 
 
+def benchmark_failures(summary, limit=8):
+    """Failed eval runs, as the builder saw them: its own report and transcript, never the hidden check."""
+    failed = [r for r in summary.get("results", []) if not r.get("passed")][:limit]
+    if not failed:
+        return "- every gate eval passed; look for cost and turn savings\n"
+    lines = ["\n## Benchmark tasks the current harness failed",
+             "(hidden checks stay hidden: work out from the transcript what the builder missed and what "
+             "general habit would have caught it; do not target these specific tasks)"]
+    for r in failed:
+        out = load_json(os.path.join(r.get("run_dir", ""), "builder-output.json"), {}) or {}
+        lines.append(f"- {r['eval']} ({r.get('title', '')}): builder reported {out.get('status', '?')!r}: "
+                     f"{str(out.get('summary', ''))[:500]} [transcript in {r.get('run_dir', '?')}]")
+    return "\n".join(lines) + "\n"
+
+
 def baseline(harness, commit):
     cache_path = os.path.join(harness.state, "eval_cache.json")
     cache = load_json(cache_path, {}) or {}
@@ -91,6 +106,7 @@ def cycle(harness):
         fh.write(evidence(harness))
         fh.write(f"\n## Benchmark of the current harness\n- pass rate {base['pass_rate']:.0%}, "
                  f"mean cost ${base['cost_usd']:.3f}, mean turns {base['turns']}\n")
+        fh.write(benchmark_failures(base))
 
     branch = f"ash-improve/{stamp}"
     wt = os.path.join(harness.state, "worktrees", f"improve-{stamp}")

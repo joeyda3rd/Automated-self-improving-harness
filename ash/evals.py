@@ -89,7 +89,8 @@ def run_one(harness, eval_dir, plugin_dir, label, repeat=0):
                                  "ASH_LESSONS": harness.learnings})
     passed, detail = run_check(eval_dir, ws)
     shutil.rmtree(tmp, ignore_errors=True)
-    return {"eval": name, "repeat": repeat, "passed": passed, "cost_usd": res.cost_usd,
+    return {"eval": name, "repeat": repeat, "passed": passed, "cost_usd": res.cost_usd, "run_dir": run_dir,
+            "title": spec.get("title", name),
             "turns": res.turns, "seconds": res.seconds, "detail": detail}
 
 

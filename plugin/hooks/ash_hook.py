@@ -146,6 +146,8 @@ def _hidden_roots(cwd):
     roots = [os.path.join(env("ASH_HOME"), "evals")] if env("ASH_HOME") else []
     if env("ASH_ROLE") == "improver":
         roots.append(os.path.join(cwd, "evals"))
+        if env("ASH_HOME"):  # benchmark records that contain hidden-check output
+            roots += [os.path.join(env("ASH_HOME"), "state", f) for f in ("eval_runs.jsonl", "eval_cache.json")]
     return roots
 
 
