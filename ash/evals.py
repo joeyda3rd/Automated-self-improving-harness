@@ -93,13 +93,25 @@ def run_one(harness, eval_dir, plugin_dir, label, repeat=0):
             "turns": res.turns, "seconds": res.seconds, "detail": detail}
 
 
-def run_suite(harness, plugin_dir, label, names=None):
+def gate_set(harness):
+    """The evals that decide self-improvements: `improve_evals` glob patterns (default: all).
+
+    Evals every harness version passes carry no signal and only cost money, so the gate can
+    be pointed at the discriminating ones (e.g. real-bug evals) while the rest stay runnable.
+    """
+    import fnmatch
+    patterns = harness.get("improve_evals", ["*"])
+    return {os.path.basename(d) for d in discover(harness)
+            if any(fnmatch.fnmatch(os.path.basename(d), p) for p in patterns)}
+
+
+def run_suite(harness, plugin_dir, label, names=None, repeats=None):
     """Score a plugin directory (current harness or a candidate) on the evals named (default: all)."""
     results, incomplete = [], False
     for eval_dir in discover(harness):
         if names is not None and os.path.basename(eval_dir) not in names:
             continue
-        for r in range(int(harness.get("eval_repeats", 1))):
+        for r in range(int(repeats or harness.get("eval_repeats", 1))):
             try:
                 results.append(run_one(harness, eval_dir, plugin_dir, label, r))
             except BudgetExceeded:
@@ -135,9 +147,9 @@ def summarize(label, results):
 
 
 def smoke_set(harness):
-    """Evals marked {"smoke": true}: a cheap first stage that rejects obvious regressions."""
+    """Evals marked {"smoke": true} within the gate set: a cheap first stage that rejects obvious regressions."""
     return {os.path.basename(d) for d in discover(harness)
-            if (load_json(os.path.join(d, "task.json"), {}) or {}).get("smoke")}
+            if (load_json(os.path.join(d, "task.json"), {}) or {}).get("smoke")} & gate_set(harness)
 
 
 def regressions(baseline, candidate):

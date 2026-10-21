@@ -3,7 +3,7 @@
   "model": null,
   "permission_mode": "bypassPermissions",
   "budget_usd_per_run": 5.0,
-  "budget_usd_total": 20.0,
+  "budget_usd_total": 40.0,
   "max_attempts_per_run": 2,
   "max_runs_per_task": 3,
   "gate_max": 3,
@@ -21,5 +21,10 @@
     "plugin/agents/",
     "plugin/roles/",
     "docs/"
-  ]
+  ],
+  "improve_evals": [
+    "md-*",
+    "mi-*"
+  ],
+  "improve_eval_repeats": 2
 }

@@ -257,6 +257,19 @@ class LoopTests(unittest.TestCase):
         status = json.loads(read(os.path.join(self.project.ash, "status.json")))
         self.assertEqual(status["state"], "idle")
 
+    def test_gate_set_and_repeats_limit_what_improvement_runs(self):
+        other = os.path.join(self.home, "evals", "tasks", "saturated")
+        os.makedirs(other)
+        save_json(os.path.join(other, "task.json"), {"title": "easy", "spec": "x", "verify_cmd": ""})
+        with open(os.path.join(other, "check.sh"), "w") as fh:
+            fh.write("true\n")
+        self.harness.cfg.update({"improve_evals": ["toy*"], "improve_eval_repeats": 2})
+        self.assertEqual(evals.gate_set(self.harness), {"toy"})
+        record = improve.cycle(self.harness)
+        self.assertTrue(record["accepted"], record)
+        self.assertEqual(set(record["candidate"]["per_task"]), {"toy"}, "saturated evals are not run")
+        self.assertEqual(record["candidate"]["per_task"]["toy"]["runs"], 2)
+
     def test_improvement_touching_kernel_is_rejected(self):
         os.environ["FAKE_TOUCH_KERNEL"] = "1"
         before = gitops.head(self.home)

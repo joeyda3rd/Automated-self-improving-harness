@@ -45,22 +45,35 @@ def evidence(harness, window=30):
     return "\n".join(lines) + "\n"
 
 
+def gate_repeats(harness):
+    return int(harness.get("improve_eval_repeats") or harness.get("eval_repeats", 1))
+
+
+def cache_key(harness, commit):
+    """A baseline is only reusable for the same harness, eval set and repeat count."""
+    import hashlib
+    names = ",".join(sorted(evals.gate_set(harness)))
+    return f"{commit}|{hashlib.sha1(names.encode()).hexdigest()[:8]}|r{gate_repeats(harness)}"
+
+
 def baseline(harness, commit):
     cache_path = os.path.join(harness.state, "eval_cache.json")
     cache = load_json(cache_path, {}) or {}
-    if "per_task" not in cache.get(commit, {}):  # missing, or cached before per-task scoring
-        log(f"benchmarking baseline {commit[:12]}")
-        summary = evals.run_suite(harness, harness.plugin_dir, f"baseline-{commit[:12]}")
+    key = cache_key(harness, commit)
+    if "per_task" not in cache.get(key, {}):
+        log(f"benchmarking baseline {commit[:12]} on {len(evals.gate_set(harness))} evals")
+        summary = evals.run_suite(harness, harness.plugin_dir, f"baseline-{commit[:12]}",
+                                  names=evals.gate_set(harness), repeats=gate_repeats(harness))
         if summary.get("incomplete"):
             raise BudgetExceeded("total budget reached while benchmarking the baseline")
-        cache[commit] = summary
+        cache[key] = summary
         save_json(cache_path, cache)
-    return cache[commit]
+    return cache[key]
 
 
 def cycle(harness):
     """Run one improvement attempt. Returns the logged decision record (or None if skipped)."""
-    if not evals.discover(harness):
+    if not evals.gate_set(harness):
         log("no evals in evals/tasks; skipping (self-improvement needs a benchmark)")
         return None
     if not gitops.is_repo(harness.home):
@@ -101,14 +114,15 @@ def cycle(harness):
         else:
             candidate_plugin = os.path.join(wt, "plugin")
             smoke = evals.smoke_set(harness)
-            early = evals.run_suite(harness, candidate_plugin, f"candidate-{stamp}-smoke", names=smoke) \
+            early = evals.run_suite(harness, candidate_plugin, f"candidate-{stamp}-smoke", names=smoke,
+                                    repeats=gate_repeats(harness)) \
                 if smoke else None
             if early and evals.regressions(base, early):
                 cand, accepted = early, False
                 reason = f"failed the smoke stage: regressed on {evals.regressions(base, early)}"
             else:
                 rest = evals.run_suite(harness, candidate_plugin, f"candidate-{stamp}",
-                                       names={os.path.basename(d) for d in evals.discover(harness)} - smoke)
+                                       names=evals.gate_set(harness) - smoke, repeats=gate_repeats(harness))
                 cand = evals.summarize(f"candidate-{stamp}", (early["results"] if early else []) + rest["results"])
                 accepted, reason = evals.better(base, cand, harness.get("improve_min_cost_gain", 0.05))
             record.update({"accepted": accepted, "reason": reason,
@@ -120,7 +134,7 @@ def cycle(harness):
                 if gitops.merge(harness.home, branch, f"Merge {branch}: {reason}"):
                     cache_path = os.path.join(harness.state, "eval_cache.json")
                     cache = load_json(cache_path, {}) or {}
-                    cache[gitops.head(harness.home)] = cand
+                    cache[cache_key(harness, gitops.head(harness.home))] = cand
                     save_json(cache_path, cache)
                 else:
                     record.update({"accepted": False, "reason": reason + "; but merging into the harness failed"})
