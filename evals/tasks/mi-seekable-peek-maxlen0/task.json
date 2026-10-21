@@ -1,0 +1,11 @@
+{
+  "title": "`seekable(..., maxlen=0)` loses items on `peek()` and `bool()`",
+  "spec": "This is the more-itertools library (Python 3, no dependencies). Run the tests with `python3 run_tests.py`.\n\nWith `maxlen=0` (no history kept), peeking or truth-testing a `seekable` consumes items, so they never come out of the iterator:\n\n```python\nimport more_itertools as mi\ns = mi.seekable([10, 20, 30], maxlen=0)\ns.peek(), s.peek()   # expected (10, 10), actual (10, 20)\nlist(s)              # expected [10, 20, 30], actual [30]\n```\n\nLikewise `s = mi.seekable([10, 20, 30], maxlen=0); bool(s)` is `True` as expected, but `list(s)` is then `[20, 30]` instead of `[10, 20, 30]`. `bool(mi.seekable([], maxlen=0))` should still be `False`.\n\n`peek()` and `bool()` are documented as looking ahead without advancing; that should hold for every `maxlen`, including 0.",
+  "acceptance": [
+    "Repeated `peek()` on a `maxlen=0` seekable returns the same item and nothing is lost",
+    "`bool()` on a `maxlen=0` seekable does not consume an item, and is False when empty",
+    "Regression tests are added and the full test suite passes"
+  ],
+  "verify_cmd": "python3 run_tests.py",
+  "source": "https://github.com/more-itertools/more-itertools/commit/6b1907de293a655fb77881bf81948f95fd15bd7c"
+}

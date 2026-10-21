@@ -1,0 +1,11 @@
+{
+  "title": "Memory grows with every `peek()` on `seekable(..., maxlen=0)`",
+  "spec": "This is the more-itertools library (Python 3, no dependencies). Run the tests with `python3 run_tests.py`.\n\nI keep a `seekable` with `maxlen=0` around and check it with `peek()` / `bool()` in a loop. Memory keeps growing even though only one item of lookahead is ever needed:\n\n```python\nimport more_itertools as mi\nimport tracemalloc\ns = mi.seekable(range(3), maxlen=0)\ntracemalloc.start(); s.peek()\nbase = tracemalloc.get_traced_memory()[0]\nfor _ in range(10000):\n    s.peek(); bool(s)\nprint(tracemalloc.get_traced_memory()[0] - base)\n# expected: a few KiB at most; actual: about 4.8 MiB\n```\n\nIt grows linearly with the number of calls, so a long-running loop eventually runs out of memory. The results themselves are correct: afterwards `list(s.elements())` is `[]` and `list(s)` is `[0, 1, 2]`, and that must stay so.\n\nRepeated lookahead on a `maxlen=0` seekable should use bounded memory, independent of how many times `peek()` or `bool()` is called.",
+  "acceptance": [
+    "Memory retained by repeated `peek()`/`bool()` on a `maxlen=0` seekable stays bounded",
+    "Peeking still does not lose or duplicate items, and nothing is kept in `elements()`",
+    "The full test suite passes"
+  ],
+  "verify_cmd": "python3 run_tests.py",
+  "source": "https://github.com/more-itertools/more-itertools/commit/3eb4053e1aacac53853f6e0abae556f280726f01"
+}

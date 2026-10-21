@@ -1,0 +1,11 @@
+{
+  "title": "`bucket` ignores a validator that happens to be falsy",
+  "spec": "This is the more-itertools library (Python 3, no dependencies). Run the tests with `python3 run_tests.py`.\n\nI use a callable object as the `validator` for `bucket`: a `set` subclass with `__call__` that accepts only the keys it contains. When that set is empty the validator is ignored and every key is accepted.\n\n```python\nimport more_itertools as mi\nclass AllowedKeys(set):\n    def __call__(self, key):\n        return key in self\n\nD = mi.bucket([10, 20, 11, 21], key=lambda x: x, validator=AllowedKeys())\n10 in D         # expected False, actual True\nlist(D[10])     # expected [], actual [10]\nsorted(D)       # expected [], actual [10, 11, 20, 21]\n```\n\nThe docs say the validator decides which keys are valid. Any callable passed as `validator` should be used as given, whatever its truth value; only leaving it out (`None`) should mean \"accept every key\".",
+  "acceptance": [
+    "The reported example gives the expected results for `in`, selection and iteration",
+    "Omitting `validator` still accepts every key",
+    "Regression tests are added and the full test suite passes"
+  ],
+  "verify_cmd": "python3 run_tests.py",
+  "source": "https://github.com/more-itertools/more-itertools/commit/67fcf640477c78605580f5ee703a54c73c1e7a8a"
+}
