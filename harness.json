@@ -8,7 +8,7 @@
   "max_runs_per_task": 3,
   "gate_max": 3,
   "verify_timeout_seconds": 900,
-  "retro": true,
+  "retro": "auto",
   "improve_every": 5,
   "improve_budget_usd": 5.0,
   "eval_budget_usd_per_task": 2.0,
@@ -27,5 +27,7 @@
     "mi-*"
   ],
   "improve_eval_repeats": 2,
-  "eval_workers": 4
+  "eval_workers": 4,
+  "retro_min_tool_errors": 3,
+  "retro_min_turns": 20
 }

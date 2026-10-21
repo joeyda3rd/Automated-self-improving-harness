@@ -95,3 +95,14 @@ Docs: [hooks](https://code.claude.com/docs/en/hooks.md), [headless](https://code
 3. **Point the improver at tooling.** Let it add helper scripts or MCP tools, such as context summarisers or test-runner wrappers, not just prose. This is where DGM and SICA found their gains. The genome would need a `plugin/bin/` or `plugin/mcp/` mutable path.
 4. **Drift check.** Every few accepted changes, re-run the original baseline and rotate in fresh held-out evals to detect overfitting to the benchmark.
 5. **Overseer.** A cheap periodic check that cancels a looping build session, beyond what the budget cap already stops.
+
+## 5. Field test: a real multi-task assignment (2026-10-21)
+
+**Assignment:** build `sitegen`, a static site generator, from a one-page brief. It needed Markdown pages with front matter, templates with escaped and raw placeholders, tag pages, an RSS feed, drafts, static files, errors that name the bad file, and tests. The run was `ash run --until-empty --no-improve`.
+
+- **Plan:** one planner session ($0.26) produced 8 tasks in a sensible order. A walking skeleton came first, then the parser, renderer and templates in parallel branches, then the pipeline, then the index, feed and end-to-end test.
+- **Build:** all 8 tasks were done and merged first try, for $1.47 (7.5 turns each on average), with no gate bounces and no guard denials. The result is 1,116 lines of code and tests, and the base branch only ever moved by verified merges.
+- **Independent check:** an unseen sample site passed every assignment point I tried. Titles, text and code blocks were escaped. Ordering was newest first. Drafts were skipped, and `--drafts` included them. Tag pages and a well-formed RSS feed were produced. Static files were copied byte for byte. A page with bad front matter failed the build and named the file. The one gap was in the brief, not the build: I never named the index template's placeholder. The builder chose `items`, documented it, and made unknown placeholders an explicit error.
+- **Retros:** all 8 returned no lessons, which is correct for runs this clean. They cost $1.17, nearly as much as the builds. **Changed:** retros now run only for runs with friction (`retro: "auto"`).
+- **Conclusion:** on a well-scoped greenfield assignment the build loop works end to end with real Claude, at about $0.20 per task. The weak spots are where the evals point: inferring intent beyond a narrow report.
+

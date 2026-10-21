@@ -210,7 +210,7 @@ class LoopTests(unittest.TestCase):
                             ignore=shutil.ignore_patterns("__pycache__"))
         cfg = json.loads(read(os.path.join(ROOT, "harness.json")))
         cfg.update({"improve_every": 2, "idle_sleep_seconds": 0, "max_consecutive_failures": 5,
-                    "improve_evals": ["*"], "improve_eval_repeats": 1})
+                    "improve_evals": ["*"], "improve_eval_repeats": 1, "retro": "always"})
         save_json(os.path.join(self.home, "harness.json"), cfg)
         toy = os.path.join(self.home, "evals", "tasks", "toy")
         os.makedirs(toy)
@@ -369,6 +369,17 @@ class LoopTests(unittest.TestCase):
         self.assertFalse(evals.better(summary, summary)[0])
         with self.assertRaises(claude.BudgetExceeded):
             improve.cycle(self.harness)
+
+    def test_retro_auto_only_reviews_runs_with_friction(self):
+        self.harness.cfg["retro"] = "auto"
+        clean = {"outcome": "done", "run": 1, "turns": 7, "tool_errors": 1}
+        self.assertFalse(engine.worth_retro(self.harness, clean))
+        for friction in ({"outcome": "failed"}, {"run": 2}, {"gate_failures": 1}, {"guard_denials": 1},
+                         {"tool_errors": 3}, {"turns": 25}):
+            self.assertTrue(engine.worth_retro(self.harness, dict(clean, **friction)), friction)
+        self.project.set_config(verify_cmd="ls feature_*.txt")
+        engine.run_task(self.harness, self.project, TaskStore(self.project).add("clean task", "x"))
+        self.assertFalse([r for r in read_jsonl(self.harness.metrics) if r.get("kind") == "retro"])
 
     def test_inbox_intake(self):
         with open(os.path.join(self.project.inbox, "feature.md"), "w") as fh:

@@ -296,6 +296,20 @@ def retro(harness, project, record):
 
 # --------------------------------------------------------------------------- loop
 
+def worth_retro(harness, record):
+    """Whether a run has something to teach. Retros of clean runs return no lessons and cost
+    nearly as much as the build, so with retro: "auto" only runs with friction get one."""
+    mode = harness.get("retro", "auto")
+    if mode in (False, "off"):
+        return False
+    if mode in (True, "always"):
+        return True
+    return (record.get("outcome") != DONE or record.get("run", 1) > 1
+            or record.get("gate_failures", 0) > 0 or record.get("guard_denials", 0) > 0
+            or record.get("tool_errors", 0) >= harness.get("retro_min_tool_errors", 3)
+            or record.get("turns", 0) >= harness.get("retro_min_turns", 20))
+
+
 def spent(harness):
     return claude.spent(harness)
 
@@ -321,7 +335,7 @@ def run_task(harness, project, task):
         log(f"{task['id']} crashed: {exc!r}")
         record = finish(harness, project, task, new_run_dir(harness, f"{task['id']}-crash"), FAILED, None,
                         note=f"orchestrator error: {exc!r}")
-    if harness.get("retro", True) and record.get("kind") == "build":
+    if record.get("kind") == "build" and worth_retro(harness, record):
         try:
             retro(harness, project, record)
         except BudgetExceeded:
