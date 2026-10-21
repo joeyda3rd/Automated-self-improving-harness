@@ -106,3 +106,15 @@ Docs: [hooks](https://code.claude.com/docs/en/hooks.md), [headless](https://code
 - **Retros:** all 8 returned no lessons, which is correct for runs this clean. They cost $1.17, nearly as much as the builds. **Changed:** retros now run only for runs with friction (`retro: "auto"`).
 - **Conclusion:** on a well-scoped greenfield assignment the build loop works end to end with real Claude, at about $0.20 per task. The weak spots are where the evals point: inferring intent beyond a narrow report.
 
+## 6. First real improvement cycle (2026-10-21)
+
+**Gate:** 22 real-bug evals (14 Markdown, 8 more-itertools) × 2 runs. The baseline cost $8.53 and passed 42/44. The only discriminating task was `md-html-comment-paragraph`, which failed 2/2.
+
+**Proposal:** the improver read the evidence, including the failing builder's own report and its transcript, but never the hidden check. Its diagnosis: "builders fixing bugs patch only the reported inputs with ad-hoc heuristics and miss variants". It added one sentence to `build-task`: fix the root cause and test variants before declaring done.
+
+**Verdict: rejected.** Results were identical on all 22 evals; the target task still failed 2/2. Cost was 1.5% lower (cheaper on 13/22), short of the 5% bar. The whole cycle cost about $19.
+
+**Lessons:**
+- The ratchet behaved as designed. A plausible, well-aimed change that did not move the benchmark was not merged. Under a pooled pass rate with a single repeat, it could have been accepted on noise.
+- **Signal is the bottleneck:** 1 of 22 real-bug evals discriminates. A cycle costs about $19, so the gate needs many more failing-but-fair tasks before cycles pay off. The cheapest source is bugs that a strong model fixes *narrowly*: fixes whose upstream tests cover variants beyond the report. The miner can rank candidates by how many hidden test cases go beyond the reported example.
+- **Prose may be too weak a lever.** Prior work (SICA, DGM) found gains in tooling, not instructions. Letting the improver add helper scripts (e.g. a "probe variants" tool that diff-tests related inputs against the pre-change code) is the next experiment worth its cost.
