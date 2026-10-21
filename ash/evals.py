@@ -2,8 +2,12 @@
 
 Each eval lives in evals/tasks/<name>/:
   task.json   {"title", "spec", "acceptance": [...], "verify_cmd": "..."}  what the builder sees
-  seed/       optional starting repository contents
-  check.sh    hidden acceptance test, run in the workspace after the session ends
+  seed/       optional starting repository contents, or instead
+  seed.git.json  {"url", "rev", "paths": [...]}: export of a pinned commit of a public repo
+                 (fetched once into state/repos/), for evals built from real projects
+  prepare.sh  optional, run in the fresh workspace after the seed is laid down
+  check.sh    hidden acceptance test, run in the workspace after the session ends,
+              with $ASH_EVAL_DIR pointing at the eval (e.g. for hidden test files)
 
 The builder never sees check.sh (the guard hides evals/), so a harness change can
 only score better by building better software, not by learning the answers.
@@ -26,13 +30,54 @@ def discover(harness):
                   if os.path.exists(os.path.join(d, "task.json")) and os.path.exists(os.path.join(d, "check.sh")))
 
 
+def _repo_cache(state, url, rev):
+    """A local clone of `url` holding `rev`, fetched once and reused."""
+    path = os.path.join(state, "repos", url.rstrip("/").split("/")[-2] + "__" + url.rstrip("/").split("/")[-1])
+    if not os.path.isdir(os.path.join(path, ".git")):
+        os.makedirs(path, exist_ok=True)
+        gitops.git(path, "init", "-q")
+        gitops.git(path, "remote", "add", "origin", url)
+    have = subprocess.run(["git", "-C", path, "cat-file", "-e", f"{rev}^{{commit}}"], capture_output=True)
+    if have.returncode != 0:
+        gitops.git(path, "fetch", "-q", "--depth=1", "origin", rev)
+    return path
+
+
+def lay_seed(state, eval_dir, ws):
+    """Create the eval's starting workspace: seed/ copy or pinned git export, then prepare.sh."""
+    seed = os.path.join(eval_dir, "seed")
+    pinned = load_json(os.path.join(eval_dir, "seed.git.json"))
+    if pinned:
+        repo = _repo_cache(state, pinned["url"], pinned["rev"])
+        os.makedirs(ws)
+        tar = subprocess.run(["git", "-C", repo, "archive", pinned["rev"], *pinned.get("paths", [])],
+                             capture_output=True, check=True).stdout
+        subprocess.run(["tar", "-x", "-C", ws], input=tar, check=True)
+    elif os.path.isdir(seed):
+        shutil.copytree(seed, ws)
+    else:
+        os.makedirs(ws)
+    prepare = os.path.join(eval_dir, "prepare.sh")
+    if os.path.exists(prepare):
+        subprocess.run(["bash", prepare], cwd=ws, check=True, capture_output=True)
+
+
+def run_check(eval_dir, ws, timeout=600):
+    env = dict(os.environ, ASH_EVAL_DIR=os.path.abspath(eval_dir))
+    try:
+        check = subprocess.run(["bash", os.path.join(eval_dir, "check.sh")], cwd=ws, env=env,
+                               capture_output=True, text=True, timeout=timeout)
+        return check.returncode == 0, (check.stdout + check.stderr)[-1000:]
+    except subprocess.TimeoutExpired:
+        return False, "check timed out"
+
+
 def run_one(harness, eval_dir, plugin_dir, label, repeat=0):
     name = os.path.basename(eval_dir)
     spec = load_json(os.path.join(eval_dir, "task.json"), {})
     tmp = tempfile.mkdtemp(prefix=f"ash-eval-{name}-")
     ws = os.path.join(tmp, "ws")
-    seed = os.path.join(eval_dir, "seed")
-    shutil.copytree(seed, ws) if os.path.isdir(seed) else os.makedirs(ws)
+    lay_seed(harness.state, eval_dir, ws)
     gitops.ensure_repo(ws)
     run_dir = os.path.join(harness.state, "evals", label, f"{name}-{repeat}")
     task = {"id": f"EVAL-{name}", "title": spec.get("title", name), "spec": spec.get("spec", ""),
@@ -42,12 +87,7 @@ def run_one(harness, eval_dir, plugin_dir, label, repeat=0):
                       budget_usd=harness.get("eval_budget_usd_per_task", 2.0),
                       extra_env={"ASH_ROLE": "eval", "ASH_VERIFY_CMD": spec.get("verify_cmd", ""),
                                  "ASH_LESSONS": harness.learnings})
-    try:
-        check = subprocess.run(["bash", os.path.join(eval_dir, "check.sh")], cwd=ws,
-                               capture_output=True, text=True, timeout=600)
-        passed, detail = check.returncode == 0, (check.stdout + check.stderr)[-1000:]
-    except subprocess.TimeoutExpired:
-        passed, detail = False, "check timed out"
+    passed, detail = run_check(eval_dir, ws)
     shutil.rmtree(tmp, ignore_errors=True)
     return {"eval": name, "repeat": repeat, "passed": passed, "cost_usd": res.cost_usd,
             "turns": res.turns, "seconds": res.seconds, "detail": detail}

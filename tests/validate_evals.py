@@ -8,31 +8,27 @@ the seed (same relative paths). Evals without a reference/ are reported as unche
 """
 import os
 import shutil
-import subprocess
 import sys
 import tempfile
 import time
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TASKS = os.path.join(ROOT, "evals", "tasks")
+sys.path.insert(0, ROOT)
+
+from ash import evals  # noqa: E402
 
 
 def run_check(eval_dir, overlay):
     tmp = tempfile.mkdtemp(prefix="ash-validate-")
     ws = os.path.join(tmp, "ws")
-    seed = os.path.join(eval_dir, "seed")
-    shutil.copytree(seed, ws) if os.path.isdir(seed) else os.makedirs(ws)
+    evals.lay_seed(os.path.join(ROOT, "state"), eval_dir, ws)
     if overlay:
         shutil.copytree(os.path.join(eval_dir, "reference"), ws, dirs_exist_ok=True)
     started = time.time()
-    try:
-        proc = subprocess.run(["bash", os.path.join(eval_dir, "check.sh")], cwd=ws, capture_output=True,
-                              text=True, timeout=300)
-        code, out = proc.returncode, (proc.stdout + proc.stderr)[-600:]
-    except subprocess.TimeoutExpired:
-        code, out = -1, "timed out"
+    passed, out = evals.run_check(eval_dir, ws, timeout=300)
     shutil.rmtree(tmp, ignore_errors=True)
-    return code, round(time.time() - started, 1), out
+    return (0 if passed else 1), round(time.time() - started, 1), out
 
 
 def main(names):

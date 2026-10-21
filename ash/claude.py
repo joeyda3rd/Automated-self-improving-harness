@@ -171,6 +171,8 @@ def run_session(harness, *, prompt, role, cwd, run_dir, schema=None, plugin_dir=
         cmd += ["--max-budget-usd", str(budget_usd)]
     if schema:
         cmd += ["--json-schema", json.dumps(schema)]
+    if (extra_env or {}).get("ASH_ROLE", role) == "eval":
+        cmd += ["--disallowedTools", "WebFetch", "WebSearch"]  # benchmark runs must not look up answers
 
     # A harness launched from inside another Claude Code session must not leak that
     # session's identity into its children, or --session-id/--resume address the parent.

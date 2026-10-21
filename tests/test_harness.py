@@ -58,6 +58,14 @@ class HookTests(unittest.TestCase):
             self.assertTrue(denied(self.call("Bash", {"command": cmd})), cmd)
         self.assertFalse(denied(self.call("Bash", {"command": "python3 -m unittest -q"})))
 
+    def test_eval_runs_are_offline(self):
+        for cmd in ["git clone https://github.com/Python-Markdown/markdown", "curl -s example.com",
+                    "pip install markdown", "python3 -c 'import urllib.request'"]:
+            self.assertTrue(denied(self.call("Bash", {"command": cmd}, ASH_ROLE="eval")), cmd)
+        self.assertFalse(denied(self.call("Bash", {"command": "python3 -m unittest -q"}, ASH_ROLE="eval")))
+        self.assertFalse(denied(self.call("Bash", {"command": "pip install -e ."}, ASH_ROLE="builder")),
+                         "real builds may install dependencies")
+
     def test_writes_confined_to_workspace(self):
         self.assertFalse(denied(self.call("Write", {"file_path": os.path.join(self.ws, "a.py")})))
         self.assertFalse(denied(self.call("Write", {"file_path": os.path.join(self.ws, ".ash", "notes.md")})))

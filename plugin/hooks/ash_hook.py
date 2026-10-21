@@ -39,6 +39,10 @@ DANGEROUS_BASH = [
     (r"(^|\s)(ASH_[A-Z_]+)=", "rewriting the harness environment"),
 ]
 
+EVAL_NETWORK = (r"\b(curl|wget|nc|ncat|telnet|ssh|scp|rsync)\b|\bgit\s+(clone|fetch|pull|ls-remote|remote\s+add)\b|"
+                r"\bpip3?\s+(install|download)\b|\bpython3?\s+-m\s+pip\s+(install|download)\b|\bnpm\s+(install|i|view)\b|"
+                r"https?://|urllib\.request|http\.client|\brequests\.get|socket\.")
+
 
 def emit(obj):
     sys.stdout.write(json.dumps(obj))
@@ -165,6 +169,9 @@ def guard(event):
             mentions = mentions or re.search(r"(^|[\s\"'=])(\./)?evals(/|\s|$)", command)
         if mentions:
             return _deny("evaluation material is hidden from build and improvement sessions")
+        if env("ASH_ROLE") == "eval" and re.search(EVAL_NETWORK, command):
+            return _deny("benchmark runs are offline: no downloads, clones or web requests "
+                         "(the upstream fix must not be looked up)")
         if env("ASH_ROLE", "interactive") != "interactive":
             for pattern, why in DANGEROUS_BASH:
                 if re.search(pattern, command):
