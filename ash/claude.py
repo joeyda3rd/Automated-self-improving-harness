@@ -201,6 +201,7 @@ def _run_session(harness, *, prompt, role, cwd, run_dir, schema, plugin_dir, res
         "ASH_HOME": harness.home,
         "ASH_ROLE": role,
         "ASH_RUN_DIR": run_dir,
+        "ASH_PLUGIN_DIR": plugin_dir,  # skills call helper tools as "$ASH_PLUGIN_DIR/bin/<tool>"
         "ASH_GATE_MAX": str(harness.get("gate_max", 3)),
         "ASH_VERIFY_TIMEOUT": str(harness.get("verify_timeout_seconds", 900)),
     })

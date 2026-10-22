@@ -14,7 +14,7 @@ How the design was checked against Claude Code's real behaviour and against prio
 
 | | Kernel (immutable to the harness) | Genome (evolved by the harness) |
 |---|---|---|
-| What | `ash/` orchestrator, `plugin/hooks/` guardrails and gates, `evals/` benchmark, `harness.json`, `bin/`, `tests/` | `plugin/roles/` session personas, `plugin/skills/` procedures, `plugin/agents/` subagents, `docs/` |
+| What | `ash/` orchestrator, `plugin/hooks/` guardrails and gates, `evals/` benchmark, `harness.json`, `bin/`, `tests/` | `plugin/roles/` session personas, `plugin/skills/` procedures, `plugin/agents/` subagents, `plugin/bin/` builder tools (prior work found the biggest gains in tooling), `docs/` |
 | Changed by | humans | the improvement loop, behind the eval gate |
 | Enforced by | the PreToolUse guard (denies edits and shell writes), the post-hoc diff check in `improve.py`, and hidden evals | - |
 

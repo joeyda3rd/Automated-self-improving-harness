@@ -85,6 +85,8 @@ class HookTests(unittest.TestCase):
         self.assertTrue(denied(self.call("Write", {"file_path": os.path.join(self.ws, "README.md")}, **env)))
         self.assertTrue(denied(self.call("Bash", {"command": "echo x > ash/engine.py"}, **env)))
         self.assertFalse(denied(self.call("Edit", {"file_path": os.path.join(self.ws, "plugin/skills/a/SKILL.md")}, **env)))
+        tools = dict(env, ASH_WRITE_ROOTS="plugin/skills/:plugin/bin/")
+        self.assertFalse(denied(self.call("Write", {"file_path": os.path.join(self.ws, "plugin/bin/probe")}, **tools)))
 
     def test_evals_are_hidden(self):
         check = os.path.join(self.home, "evals", "tasks", "x", "check.sh")
