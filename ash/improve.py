@@ -49,6 +49,12 @@ def gate_repeats(harness):
     return int(harness.get("improve_eval_repeats") or harness.get("eval_repeats", 1))
 
 
+def plugin_tree(harness, commit):
+    """Git tree hash of plugin/ at `commit`: the genome being scored. Baselines are keyed by it,
+    so kernel or doc commits that leave the plugin unchanged reuse the benchmark."""
+    return gitops.git(harness.home, "rev-parse", f"{commit}:plugin")
+
+
 def cache_key(harness, commit):
     """A baseline is only reusable for the same harness, eval set and repeat count."""
     import hashlib
@@ -76,7 +82,7 @@ def baseline(harness, commit):
     cache = load_json(cache_path, {}) or {}
     key = cache_key(harness, commit)
     if "per_task" not in cache.get(key, {}):
-        log(f"benchmarking baseline {commit[:12]} on {len(evals.gate_set(harness))} evals")
+        log(f"benchmarking baseline (plugin {commit[:12]}) on {len(evals.gate_set(harness))} evals")
         summary = evals.run_suite(harness, harness.plugin_dir, f"baseline-{commit[:12]}",
                                   names=evals.gate_set(harness), repeats=gate_repeats(harness), resumable=True)
         if summary.get("incomplete"):
@@ -99,7 +105,7 @@ def cycle(harness):
         gitops.remove_worktree(harness.home, stale, "ash-improve/" + os.path.basename(stale)[len("improve-"):])
     mutable = harness.get("mutable_paths", [])
     base_commit = gitops.head(harness.home)
-    base = baseline(harness, base_commit)
+    base = baseline(harness, plugin_tree(harness, base_commit))
 
     stamp = time.strftime("%Y%m%d-%H%M%S")
     run_dir = os.path.join(harness.runs_dir, f"{stamp}-improve")
@@ -153,7 +159,7 @@ def cycle(harness):
                 if gitops.merge(harness.home, branch, f"Merge {branch}: {reason}"):
                     cache_path = os.path.join(harness.state, "eval_cache.json")
                     cache = load_json(cache_path, {}) or {}
-                    cache[cache_key(harness, gitops.head(harness.home))] = cand
+                    cache[cache_key(harness, plugin_tree(harness, gitops.head(harness.home)))] = cand
                     save_json(cache_path, cache)
                 else:
                     record.update({"accepted": False, "reason": reason + "; but merging into the harness failed"})
