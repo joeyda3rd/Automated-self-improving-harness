@@ -1,0 +1,11 @@
+{
+  "title": "`sqlparse.split` returns a `BEGIN TRANSACTION ... END TRANSACTION` script as one statement",
+  "spec": "This is the sqlparse library (Python 3, no dependencies). Run the tests with `PYTHONPATH=. python3 -m pytest -q -p no:cacheprovider tests`.\n\nSplitting a script that wraps its work in an explicit transaction gives back a single statement instead of one per `;`.\n\n```python\nimport sqlparse\nsql = (\"BEGIN TRANSACTION;\\n\"\n       \"DELETE FROM a WHERE id = 1;\\n\"\n       \"INSERT INTO a SELECT * FROM b;\\n\"\n       \"END TRANSACTION;\")\nsqlparse.split(sql)\n```\nExpected: `['BEGIN TRANSACTION;', 'DELETE FROM a WHERE id = 1;', 'INSERT INTO a SELECT * FROM b;', 'END TRANSACTION;']`\nActual: the whole input as a single string.\n\nSimilar inputs are probably affected too; please fix the underlying problem rather than just this case.",
+  "acceptance": [
+    "the reported example produces the expected output",
+    "the underlying problem is fixed, not just the reported input",
+    "the full test suite passes"
+  ],
+  "verify_cmd": "PYTHONPATH=. python3 -m pytest -q -p no:cacheprovider tests",
+  "source": "https://github.com/andialbrecht/sqlparse/commit/5ca50a2ee9b39e9efeea33e01f132d628144fb69"
+}

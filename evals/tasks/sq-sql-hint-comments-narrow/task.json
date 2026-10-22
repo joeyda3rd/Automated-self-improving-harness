@@ -1,0 +1,11 @@
+{
+  "title": "`strip_comments=True` removes the optimizer hint `/*+ DIRECT */`",
+  "spec": "This is the sqlparse library (Python 3, no dependencies). Run the tests with `PYTHONPATH=. python3 -m pytest -q -p no:cacheprovider tests`.\n\n```python\nimport sqlparse\nsqlparse.format('insert /*+ DIRECT */ into sch.table_name as select * from foo', strip_comments=True)\n```\nExpected: the input unchanged.\nActual: `'insert   into sch.table_name as select * from foo'`\n\nSimilar inputs are probably affected too; please fix the underlying problem rather than just this case.",
+  "acceptance": [
+    "the reported example produces the expected output",
+    "the underlying problem is fixed, not just the reported input",
+    "the full test suite passes"
+  ],
+  "verify_cmd": "PYTHONPATH=. python3 -m pytest -q -p no:cacheprovider tests",
+  "source": "https://github.com/andialbrecht/sqlparse/commit/af6df6c6627b5fcf98bc7bb46f780e1fa0d1a7ef"
+}

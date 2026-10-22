@@ -1,0 +1,11 @@
+{
+  "title": "`InvalidMetadata` cannot be unpickled",
+  "spec": "This is the `packaging` library (Python 3, no dependencies; the code is in `src/packaging/`). Run the tests with `PYTHONPATH=src python3 -m pytest -q -p no:cacheprovider tests --ignore=tests/property` (about a minute).\n\nThis exception cannot cross a process boundary, so a `multiprocessing` or `concurrent.futures` worker that hits one breaks the pool instead of reporting it.\n\n```python\nimport pickle\nfrom packaging.metadata import InvalidMetadata\nexc = InvalidMetadata(\"version\", \"'1.0.a' is invalid\")\npickle.loads(pickle.dumps(exc))\n```\nExpected: a copy with the same `field` and the same `str()`.\nActual: `TypeError: InvalidMetadata.__init__() missing 1 required positional argument: 'message'`.\n\nSimilar exceptions are probably affected too; please fix the underlying problem rather than just this case.",
+  "acceptance": [
+    "the reported example produces the expected output",
+    "the underlying problem is fixed, not just the reported input",
+    "the full test suite passes"
+  ],
+  "verify_cmd": "PYTHONPATH=src python3 -m pytest -q -p no:cacheprovider tests --ignore=tests/property",
+  "source": "https://github.com/pypa/packaging/commit/1a9c4cb6b6aac7fb6137fcdc4f440af912d8d87f"
+}

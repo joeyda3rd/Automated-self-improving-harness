@@ -1,0 +1,11 @@
+{
+  "title": "Checking a missing key with `in` adds it to `bucket`'s keys",
+  "spec": "This is the more-itertools library (Python 3, no dependencies). Run the tests with `python3 run_tests.py`.\n\nAfter checking a missing key with `in`, a `bucket` reports that key when iterated, although no item ever had it.\n\n```python\nimport more_itertools as mi\nD = mi.bucket([10, 20, 11, 21], key=lambda x: 10 * (x // 10))\n30 in D        # False, as expected\nsorted(D)      # expected [10, 20], actual [10, 20, 30]\n```\n\nSimilar inputs are probably affected too; please fix the underlying problem rather than just this case.",
+  "acceptance": [
+    "the reported example produces the expected output",
+    "the underlying problem is fixed, not just the reported input",
+    "the full test suite passes"
+  ],
+  "verify_cmd": "python3 run_tests.py",
+  "source": "https://github.com/more-itertools/more-itertools/commit/2b8d5cddce4ea01f88a973551cd50479cf5fa45f"
+}

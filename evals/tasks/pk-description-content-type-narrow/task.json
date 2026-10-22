@@ -1,0 +1,11 @@
+{
+  "title": "`Description-Content-Type: text/plain; x*` crashes `Metadata.from_email` with `IndexError`",
+  "spec": "This is the `packaging` library (Python 3, no dependencies; the code is in `src/packaging/`). Run the tests with `PYTHONPATH=src python3 -m pytest -q -p no:cacheprovider tests --ignore=tests/property` (about a minute).\n\n```python\nfrom packaging import metadata\ndef load(dct):\n    return metadata.Metadata.from_email(\n        \"Metadata-Version: 2.6\\nName: packaging\\nVersion: 1.0\\n\"\n        f\"Description-Content-Type: {dct}\\n\")\nload(\"text/plain; x*\")    # IndexError: string index out of range\n```\nExpected: the usual `ExceptionGroup` holding one `metadata.InvalidMetadata` whose `field` is `\"description-content-type\"`.\n\nThe message should include the repr of the offending value and say it \"is not a valid content type\", e.g. `'text/plain; x*' is not a valid content type for 'description-content-type'`.\n\nSimilar inputs are probably affected too; please fix the underlying problem rather than just this case.",
+  "acceptance": [
+    "the reported example produces the expected output",
+    "the underlying problem is fixed, not just the reported input",
+    "the full test suite passes"
+  ],
+  "verify_cmd": "PYTHONPATH=src python3 -m pytest -q -p no:cacheprovider tests --ignore=tests/property",
+  "source": "https://github.com/pypa/packaging/commit/9d0ec47b36a1bcdf705b397b84cd89272410a00d"
+}

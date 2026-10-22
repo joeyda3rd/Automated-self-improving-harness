@@ -1,0 +1,11 @@
+{
+  "title": "Everything after `cmd 2</dev/null` in inline code is dropped from the document",
+  "spec": "This is the Python-Markdown library (Python 3, no dependencies). Run the tests with `python3 -m unittest discover -s tests -q`.\n\nDocumenting a shell redirection in inline code makes the rest of the document disappear.\n\nInput: `markdown.markdown('Run `cmd 2</dev/null` here.\\n\\nThis paragraph should not disappear.')`\nExpected: `<p>Run <code>cmd 2&lt;/dev/null</code> here.</p>\\n<p>This paragraph should not disappear.</p>`\nActual: `<p>Run `cmd 2</p>`\n\nSimilar inputs are probably affected too; please fix the underlying problem rather than just this case.",
+  "acceptance": [
+    "the reported example produces the expected output",
+    "the underlying problem is fixed, not just the reported input",
+    "the full test suite passes"
+  ],
+  "verify_cmd": "python3 -m unittest discover -s tests -q",
+  "source": "https://github.com/Python-Markdown/markdown/commit/7c265bc79d8946ac42bb61a39f9052c8e261340f"
+}

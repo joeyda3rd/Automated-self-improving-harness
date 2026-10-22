@@ -1,0 +1,11 @@
+{
+  "title": "`strip_whitespace=True` leaves a space before `)` after a subquery's WHERE clause",
+  "spec": "This is the sqlparse library (Python 3, no dependencies). Run the tests with `PYTHONPATH=. python3 -m pytest -q -p no:cacheprovider tests`.\n\n```python\nimport sqlparse\nsqlparse.format('select * from (select a from b where c = d  ) x', strip_whitespace=True)\n```\nExpected: `'select * from (select a from b where c = d) x'`\nActual: `'select * from (select a from b where c = d ) x'`\n\nSimilar inputs are probably affected too; please fix the underlying problem rather than just this case.",
+  "acceptance": [
+    "the reported example produces the expected output",
+    "the underlying problem is fixed, not just the reported input",
+    "the full test suite passes"
+  ],
+  "verify_cmd": "PYTHONPATH=. python3 -m pytest -q -p no:cacheprovider tests",
+  "source": "https://github.com/andialbrecht/sqlparse/commit/0c4902f3f7aafa8c2e63a375ec307c210842f543"
+}

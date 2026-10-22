@@ -1,0 +1,11 @@
+{
+  "title": "`zip_broadcast` fails on an iterable that can only be opened once",
+  "spec": "This is the more-itertools library (Python 3, no dependencies). Run the tests with `python3 run_tests.py`.\n\n`zip_broadcast` opens each non-scalar argument twice. That breaks iterables that can only be opened once (a wrapper around a stream, a DB cursor, ...):\n\n```python\nimport more_itertools as mi\nclass SingleUse:\n    def __init__(self, values):\n        self.values, self.opened = values, False\n    def __iter__(self):\n        if self.opened:\n            raise RuntimeError('input already opened')\n        self.opened = True\n        return iter(self.values)\n\nlist(mi.zip_broadcast('label', SingleUse([1, 2])))\n# expected: [('label', 1), ('label', 2)]\n# actual:   RuntimeError: input already opened\n```\n\nSimilar inputs are probably affected too; please fix the underlying problem rather than just this case.",
+  "acceptance": [
+    "the reported example produces the expected output",
+    "the underlying problem is fixed, not just the reported input",
+    "the full test suite passes"
+  ],
+  "verify_cmd": "python3 run_tests.py",
+  "source": "https://github.com/more-itertools/more-itertools/commit/e426d256b90bcef9aa4509ea345fca68ff21ae0c"
+}
