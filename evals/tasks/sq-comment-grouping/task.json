@@ -1,0 +1,12 @@
+{
+  "title": "`strip_comments` glues tokens together: `SELECT 1/*bar*/ AS foo` becomes `SELECT 1AS foo`",
+  "spec": "This is the sqlparse library (Python 3, no dependencies). Run the tests with `PYTHONPATH=. python3 -m pytest -q -p no:cacheprovider tests`.\n\nStripping a comment also eats the whitespace that follows it, which can produce invalid SQL.\n\n```python\nimport sqlparse\nsqlparse.format('SELECT 1/*bar*/ AS foo', strip_comments=True)\n```\nExpected: `'SELECT 1 AS foo'`\nActual: `'SELECT 1AS foo'`\n\nThe rule should be: `strip_comments` removes the comment itself and nothing else. Whitespace and line breaks that were next to the comment stay in the output (collapsing them is the job of `strip_whitespace=True`). For example `sqlparse.format('/* sql starts here */ select', strip_comments=True)` should give `' select'`, keeping the space that followed the comment, while `sqlparse.format('select (/* sql starts here */ select 2)', strip_comments=True, strip_whitespace=True)` should still give `'select (select 2)'`.\n\nWhen parsing, a comment token should likewise not swallow the whitespace after it; that whitespace should remain separate tokens in the statement.",
+  "acceptance": [
+    "`SELECT 1/*bar*/ AS foo` with `strip_comments=True` gives `SELECT 1 AS foo`",
+    "Whitespace next to a stripped comment is preserved unless `strip_whitespace=True` is also given",
+    "Existing tests that asserted the old whitespace-eating behaviour are updated to the new rule",
+    "Regression tests are added and the full test suite passes"
+  ],
+  "verify_cmd": "PYTHONPATH=. python3 -m pytest -q -p no:cacheprovider tests",
+  "source": "https://github.com/andialbrecht/sqlparse/commit/8b0342730b2e53dcc7887e5b4563d479444ec0ba"
+}

@@ -1,0 +1,12 @@
+{
+  "title": "A `/*` or `$$` inside a string or `--` comment breaks the next real comment or dollar-quoted string",
+  "spec": "This is the sqlparse library (Python 3, no dependencies). Run the tests with `PYTHONPATH=. python3 -m pytest -q -p no:cacheprovider tests`.\n\nText that only looks like a delimiter, because it sits inside a string literal or a `--` comment, is treated as a real one, and the next genuine comment or dollar-quoted literal is then tokenized as garbage.\n\n```python\nimport sqlparse\nsqlparse.format(\"SELECT '/*' FROM t; /* c */ SELECT 1\", strip_comments=True)\n```\nExpected: `\"SELECT '/*' FROM t; SELECT 1\"`\nActual: `\"SELECT '/*' FROM t;/* c */ SELECT 1\"` (the comment is not recognised: `sqlparse.lexer.tokenize` yields `/`, `*`, `c`, ... instead of one `Comment.Multiline` token `'/* c */'`)\n\nDollar quoting is hit too: in `\"-- $$\\nDO $$ BEGIN NULL; END $$\"` the body should be one `Literal` token `'$$ BEGIN NULL; END $$'`, but the tokens come out as `Error '$'` and keywords.\n\nThe rule: `/*`, `*/`, `/*+` and `$$` / `$tag$` that occur inside a single- or double-quoted string or behind `--` are ordinary text and must not affect later comments, optimizer hints or dollar-quoted literals. Also, a closing `$$` may follow the opener immediately, so `SELECT $$$a$$` should give one `Literal` `'$$$a$$'`.\n\nTokenizing must stay linear on long inputs with many unclosed `/*` or `$$`.",
+  "acceptance": [
+    "Both reported inputs tokenize as expected (one `Comment.Multiline` `'/* c */'`, one `Literal` `'$$ BEGIN NULL; END $$'`)",
+    "Look-alike delimiters in strings or `--` comments never affect later `/* */`, `/*+ */`, `$$` or `$tag$` tokens, and `SELECT $$$a$$` gives one literal",
+    "Long inputs with many unmatched `/*` or `$$` still tokenize quickly",
+    "Regression tests are added and the full test suite passes"
+  ],
+  "verify_cmd": "PYTHONPATH=. python3 -m pytest -q -p no:cacheprovider tests",
+  "source": "https://github.com/andialbrecht/sqlparse/commit/519e41698a172add8aa7b54ab4e94daad0af213e"
+}

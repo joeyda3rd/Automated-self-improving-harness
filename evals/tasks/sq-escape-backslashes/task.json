@@ -1,0 +1,11 @@
+{
+  "title": "`output_format='python'` and `'php'` produce broken string literals when the SQL contains backslashes",
+  "spec": "This is the sqlparse library (Python 3, no dependencies). Run the tests with `PYTHONPATH=. python3 -m pytest -q -p no:cacheprovider tests`.\n\nThe python and php output formats are supposed to give a string literal that evaluates back to the SQL, but backslashes in the SQL are copied as is, so a backslash before a quote ends the generated string early.\n\n```python\nimport sqlparse\nsql = \"select '\\\\foo\\\\'\"   # the SQL text is: select '\\foo\\'\nprint(sqlparse.format(sql, output_format='python'))\nprint(sqlparse.format(sql, output_format='php'))\n```\nExpected:\n```\nsql = 'select \\'\\\\foo\\\\\\''\n$sql = \"select '\\\\foo\\\\'\";\n```\nActual:\n```\nsql = 'select \\'\\foo\\\\''\n$sql = \"select '\\foo\\'\";\n```\nThe python line is not even valid Python, and in PHP `\\'` and `\\f` change meaning.\n\nEvery backslash in the SQL must be escaped in the generated literal (as well as the quote character), so the output always evaluates to exactly the original SQL.",
+  "acceptance": [
+    "The reported SQL produces the expected python and php output",
+    "Generated python and php literals evaluate back to the original SQL for input with backslashes and quotes",
+    "Regression tests are added and the full test suite passes"
+  ],
+  "verify_cmd": "PYTHONPATH=. python3 -m pytest -q -p no:cacheprovider tests",
+  "source": "https://github.com/andialbrecht/sqlparse/commit/53ff44b53e27cff78259acc1af015506fea60f63"
+}

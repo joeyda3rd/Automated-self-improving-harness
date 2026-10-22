@@ -1,0 +1,10 @@
+{
+  "url": "https://github.com/andialbrecht/sqlparse",
+  "rev": "a51df6d9e2d31b44be9adb6bc8732517db6bf96b",
+  "paths": [
+    "sqlparse",
+    "tests",
+    "pyproject.toml"
+  ],
+  "fix": "519e41698a172add8aa7b54ab4e94daad0af213e"
+}

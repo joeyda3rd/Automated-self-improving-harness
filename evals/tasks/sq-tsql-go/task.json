@@ -1,0 +1,11 @@
+{
+  "title": "`sqlparse.split` does not treat T-SQL `GO` as a batch separator",
+  "spec": "This is the sqlparse library (Python 3, no dependencies). Run the tests with `PYTHONPATH=. python3 -m pytest -q -p no:cacheprovider tests`.\n\nIn T-SQL scripts, `GO` on its own line separates batches, but `sqlparse.split` glues it onto the next statement.\n\n```python\nimport sqlparse\nsqlparse.split('USE foo;\\nGO\\nSELECT 1;\\nGO')\n```\nExpected: `['USE foo;', 'GO', 'SELECT 1;', 'GO']`\nActual: `['USE foo;', 'GO\\nSELECT 1;', 'GO']`\n\n`GO` with a repeat count behaves the same: `sqlparse.split('USE foo;\\nGO 2\\nSELECT 1;')` should be `['USE foo;', 'GO 2', 'SELECT 1;']` but is `['USE foo;', 'GO 2\\nSELECT 1;']`.\n\n`GO`, optionally followed by a count, should end the current statement just like a `;` does, and be returned as its own statement.",
+  "acceptance": [
+    "Both reported scripts split as expected",
+    "`GO` and `GO <n>` are returned as separate statements; existing `;` splitting is unchanged",
+    "Regression tests are added and the full test suite passes"
+  ],
+  "verify_cmd": "PYTHONPATH=. python3 -m pytest -q -p no:cacheprovider tests",
+  "source": "https://github.com/andialbrecht/sqlparse/commit/7334ac99152d02bb09ab0abe79377174c2867f7c"
+}

@@ -1,0 +1,11 @@
+{
+  "title": "`strip_comments=True` removes optimizer hints like `/*+ DIRECT */`",
+  "spec": "This is the sqlparse library (Python 3, no dependencies). Run the tests with `PYTHONPATH=. python3 -m pytest -q -p no:cacheprovider tests`.\n\nOptimizer hints are written as comments, but they change the query plan, and `strip_comments` deletes them along with ordinary comments.\n\n```python\nimport sqlparse\nsqlparse.format('insert /*+ DIRECT */ into sch.table_name as select * from foo', strip_comments=True)\n```\nExpected: the input unchanged.\nActual: `'insert   into sch.table_name as select * from foo'`\n\nSingle-line hints are dropped as well: `sqlparse.format('select --+full(u)\\n--comment simple', strip_comments=True)` should give `'select --+full(u)\\n'` (only the plain comment removed), but gives `'select\\n'`.\n\nThe rule: `strip_comments` must keep every hint comment (`/*+ ... */`, `--+ ...`, `#+ ...`) exactly as written, and still remove all ordinary comments around them. For example `SELECT /*+cluster(T)*/* FROM T_EEE T where A >:1` is returned unchanged, and an empty string stays empty.",
+  "acceptance": [
+    "Multi-line and single-line hint comments survive `strip_comments=True` unchanged",
+    "Ordinary comments next to hints are still removed",
+    "Regression tests are added and the full test suite passes"
+  ],
+  "verify_cmd": "PYTHONPATH=. python3 -m pytest -q -p no:cacheprovider tests",
+  "source": "https://github.com/andialbrecht/sqlparse/commit/af6df6c6627b5fcf98bc7bb46f780e1fa0d1a7ef"
+}

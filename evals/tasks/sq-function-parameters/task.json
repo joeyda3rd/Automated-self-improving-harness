@@ -1,0 +1,11 @@
+{
+  "title": "`Function.get_parameters()` returns the window name instead of the arguments for `foo(5) OVER w`",
+  "spec": "This is the sqlparse library (Python 3, no dependencies). Run the tests with `PYTHONPATH=. python3 -m pytest -q -p no:cacheprovider tests`.\n\nFor a window function call, `get_parameters()` looks at the `OVER` clause instead of the argument list.\n\n```python\nimport sqlparse\nf = sqlparse.parse('foo(5) over win1')[0].tokens[0]   # a sqlparse.sql.Function\nf.get_parameters()\n```\nExpected: `[<Integer '5'>]`\nActual: `[<Identifier 'win1'>]`\n\nWith an inline window, `sqlparse.parse('foo(5) over (PARTITION BY c1)')[0].tokens[0].get_parameters()` gives `[]` instead of the single `5`.\n\n`get_parameters()` should always return the arguments inside the function's own parentheses, whether or not an `OVER` clause follows.\n\nI would also like to get at the window itself: please add `Function.get_window()`, returning the window part of the `OVER` clause (the `Identifier` `win1` in the first example, the `Parenthesis` `(PARTITION BY c1)` in the second) and `None` for a function call without `OVER`.",
+  "acceptance": [
+    "`get_parameters()` returns the call's arguments with and without an `OVER` clause",
+    "`Function.get_window()` returns an `Identifier` for `over win1`, a `Parenthesis` for `over (...)`, and `None` without `OVER`",
+    "Regression tests are added and the full test suite passes"
+  ],
+  "verify_cmd": "PYTHONPATH=. python3 -m pytest -q -p no:cacheprovider tests",
+  "source": "https://github.com/andialbrecht/sqlparse/commit/e03b74e608b71dd06824c2cb42421c0d790248e3"
+}

@@ -1,0 +1,11 @@
+{
+  "title": "`sqlparse.split` returns a whole `BEGIN TRANSACTION ... END TRANSACTION` script as one statement",
+  "spec": "This is the sqlparse library (Python 3, no dependencies). Run the tests with `PYTHONPATH=. python3 -m pytest -q -p no:cacheprovider tests`.\n\nSplitting a script that wraps its work in an explicit transaction gives back a single statement instead of one per `;`.\n\n```python\nimport sqlparse\nsql = (\"BEGIN TRANSACTION;\\n\"\n       \"DELETE FROM a WHERE id = 1;\\n\"\n       \"INSERT INTO a SELECT * FROM b;\\n\"\n       \"END TRANSACTION;\")\nsqlparse.split(sql)\n```\nExpected: `['BEGIN TRANSACTION;', 'DELETE FROM a WHERE id = 1;', 'INSERT INTO a SELECT * FROM b;', 'END TRANSACTION;']`\nActual: the whole input as a single string.\n\nThe same happens when a formatter has put the keywords on separate lines (`BEGIN\\nTRANSACTION;` ... `END\\nTRANSACTION;`); those should split into the same four statements, keeping the line break inside the first and last one.\n\n`BEGIN TRANSACTION` starts a transaction, not a `BEGIN ... END` block, so the statements inside it must be split as usual. Real `BEGIN ... END` blocks in procedures and triggers must still be kept together.",
+  "acceptance": [
+    "Both reported scripts split into four statements, with `BEGIN TRANSACTION;` / `END TRANSACTION;` (or their two-line forms) as the first and last",
+    "Existing BEGIN ... END block splitting is unchanged",
+    "Regression tests are added and the full test suite passes"
+  ],
+  "verify_cmd": "PYTHONPATH=. python3 -m pytest -q -p no:cacheprovider tests",
+  "source": "https://github.com/andialbrecht/sqlparse/commit/5ca50a2ee9b39e9efeea33e01f132d628144fb69"
+}
