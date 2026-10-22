@@ -1,0 +1,11 @@
+{
+  "title": "Malformed `Description-Content-Type` crashes with `IndexError` or is silently accepted",
+  "spec": "This is the `packaging` library (Python 3, no dependencies; the code is in `src/packaging/`). Run the tests with `PYTHONPATH=src python3 -m pytest -q -p no:cacheprovider tests --ignore=tests/property` (about a minute).\n\n```python\nfrom packaging import metadata\ndef load(dct):\n    return metadata.Metadata.from_email(\n        \"Metadata-Version: 2.6\\nName: packaging\\nVersion: 1.0\\n\"\n        f\"Description-Content-Type: {dct}\\n\")\nload(\"text/plain; x*\")    # IndexError: string index out of range\nload(\"text/plain; {b}\")   # accepted, value kept as 'text/plain; {b}'\n```\nExpected for both: the usual `ExceptionGroup` holding one `metadata.InvalidMetadata` whose `field` is `\"description-content-type\"`. The same should happen for `text/plain; a}b`, for an unterminated quoted parameter (`text/plain; charset=\"unterminated`, today misreported as a charset problem) and for a folded value spread over two lines (today a raw `ValueError`). Reading `.description_content_type` from `Metadata.from_raw({...}, validate=False)` with such a value must raise `InvalidMetadata` too.\n\nThe message should include the repr of the offending value and say it \"is not a valid content type\", e.g. `'text/plain; x*' is not a valid content type for 'description-content-type'`. Well-formed but unsupported types such as `application/octet-stream` must still be rejected.",
+  "acceptance": [
+    "`x*`, `{b}`, `a}b`, unterminated-quote and folded values give `InvalidMetadata` for `description-content-type` with the message shape above",
+    "Valid values (`text/markdown; variant=gfm`, `text/plain; charset=UTF-8`) still work and unsupported types are still rejected",
+    "Regression tests are added and the full test suite passes"
+  ],
+  "verify_cmd": "PYTHONPATH=src python3 -m pytest -q -p no:cacheprovider tests --ignore=tests/property",
+  "source": "https://github.com/pypa/packaging/commit/9d0ec47b36a1bcdf705b397b84cd89272410a00d"
+}

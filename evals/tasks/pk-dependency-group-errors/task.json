@@ -1,0 +1,11 @@
+{
+  "title": "Resolving dependency groups reports only the first broken included group",
+  "spec": "This is the `packaging` library (Python 3, no dependencies; the code is in `src/packaging/`). Run the tests with `PYTHONPATH=src python3 -m pytest -q -p no:cacheprovider tests --ignore=tests/property` (about a minute).\n\n`resolve_dependency_groups` is meant to collect every error in one go, but it stops reporting after the first included group that fails to parse.\n\n```python\nfrom packaging.dependency_groups import resolve_dependency_groups\ngroups = {\n    \"root\": [{\"include-group\": \"bad\"}, {\"include-group\": \"wrapper\"}],\n    \"bad\": [\"!!! bad invalid\"],\n    \"wrapper\": [{\"include-group\": \"also-bad\"}],\n    \"also-bad\": [\"!!! also invalid\"],\n}\nresolve_dependency_groups(groups, \"root\")\n```\nExpected: an `ExceptionGroup` with two `InvalidRequirement`s, first for `!!! bad invalid`, then for `!!! also invalid`, so I can fix everything in one pass.\nActual: the group holds only the `!!! bad invalid` error; `also-bad` is never reported.\n\nErrors in later sibling includes, at any depth, must still be collected (in the order they are met) after an earlier include has failed. A failing group should still be reported only once per call, even when reached through several includes: with `root` including `group1` and `group2`, which both include the same broken group, there is exactly one error.",
+  "acceptance": [
+    "The reported example raises one `ExceptionGroup` with both errors, in order",
+    "A broken group reached through several includes is reported once",
+    "Regression tests are added and the full test suite passes"
+  ],
+  "verify_cmd": "PYTHONPATH=src python3 -m pytest -q -p no:cacheprovider tests --ignore=tests/property",
+  "source": "https://github.com/pypa/packaging/commit/959bb79c06cb883bf1ecd1ddc94a079294907e0f"
+}

@@ -1,0 +1,11 @@
+{
+  "title": "`Pylock.select(tags=[])` still picks wheels for the running interpreter",
+  "spec": "This is the `packaging` library (Python 3, no dependencies; the code is in `src/packaging/`). Run the tests with `PYTHONPATH=src python3 -m pytest -q -p no:cacheprovider tests --ignore=tests/property` (about a minute).\n\n```python\nfrom packaging.pylock import Pylock\nh = {\"sha256\": \"f\" * 64}\nurl = \"https://example.com/\"\nlock = Pylock.from_dict({\"lock-version\": \"1.0\", \"created-by\": \"me\", \"packages\": [{\n    \"name\": \"foo\", \"version\": \"1.0\",\n    \"wheels\": [{\"name\": \"foo-1.0-py3-none-any.whl\",\n                \"url\": url + \"foo-1.0-py3-none-any.whl\", \"hashes\": h}],\n    \"sdist\": {\"name\": \"foo-1.0.tar.gz\", \"url\": url + \"foo-1.0.tar.gz\", \"hashes\": h}}]})\n[d.filename for _, d in lock.select(tags=[])]\n```\nExpected: `['foo-1.0.tar.gz']`. With no supported tags no wheel is compatible, so the sdist is the fallback.\nActual: `['foo-1.0-py3-none-any.whl']`. An empty list is treated as if no tags were given, so the host's tags are used.\n\nOnly `tags=None` (the default) should mean \"the running interpreter's tags\". For a package with no sdist, `select(tags=[])` should raise the existing `PylockSelectError` (`No wheel found matching ... and no sdist available ...`), as for any lock with no matching wheel.",
+  "acceptance": [
+    "`select(tags=[])` picks the sdist in the reported example",
+    "Without an sdist, `select(tags=[])` raises `PylockSelectError`",
+    "Regression tests are added and the full test suite passes"
+  ],
+  "verify_cmd": "PYTHONPATH=src python3 -m pytest -q -p no:cacheprovider tests --ignore=tests/property",
+  "source": "https://github.com/pypa/packaging/commit/826426fc88773515fab149a5f6bde85761e57fbb"
+}

@@ -1,0 +1,11 @@
+{
+  "title": "Malformed wheel tags like `2.7.6-none-any` are accepted and expand into bogus numeric tags",
+  "spec": "This is the `packaging` library (Python 3, no dependencies; the code is in `src/packaging/`). Run the tests with `PYTHONPATH=src python3 -m pytest -q -p no:cacheprovider tests --ignore=tests/property` (about a minute).\n\n```python\nfrom packaging.utils import parse_wheel_filename\nparse_wheel_filename(\"playlyfe-0.1.1-2.7.6-none-any.whl\")\n```\nExpected: `InvalidWheelFilename`.\nActual: accepted, with tags `2-none-any`, `6-none-any` and `7-none-any`.\n\n`packaging.tags.parse_tag` has the same problem: `parse_tag(\"py3.2-none-any\")` gives `{py3-none-any, 2-none-any}` and `parse_tag(\"py+3-none-any\")` is accepted.\n\nUnder the platform compatibility tags spec an interpreter tag is a name plus version such as `py3` or `cp311`. `parse_tag` should raise `packaging.tags.InvalidTag`, with \"invalid interpreter\" in the message, when any interpreter component is not a valid Python identifier (letters, digits and underscores, not starting with a digit), and `parse_wheel_filename` should report that as `InvalidWheelFilename`. Unusual but well-formed names such as `sillywalk`, `graalpy311` and `_custom` keep working; ABI and platform components are unaffected.",
+  "acceptance": [
+    "`2-none-any`, `2.7.6-none-any`, `py3.2-none-any` and `py+3-none-any` raise `InvalidTag` mentioning an invalid interpreter",
+    "The reported wheel filename raises `InvalidWheelFilename`; identifier interpreters still parse",
+    "Regression tests are added and the full test suite passes"
+  ],
+  "verify_cmd": "PYTHONPATH=src python3 -m pytest -q -p no:cacheprovider tests --ignore=tests/property",
+  "source": "https://github.com/pypa/packaging/commit/26fa1d42ccd98010d5fcf701dd10069e761b034c"
+}

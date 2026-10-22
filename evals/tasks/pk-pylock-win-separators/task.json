@@ -1,0 +1,11 @@
+{
+  "title": "pylock rejects artifact paths that mix `/` and `\\` separators",
+  "spec": "This is the `packaging` library (Python 3, no dependencies; the code is in `src/packaging/`). Run the tests with `PYTHONPATH=src python3 -m pytest -q -p no:cacheprovider tests --ignore=tests/property` (about a minute).\n\n```python\nfrom packaging.pylock import Pylock\nPylock.from_dict({\"lock-version\": \"1.0\", \"created-by\": \"pip\", \"packages\": [{\n    \"name\": \"example\", \"version\": \"1.0\",\n    \"sdist\": {\"path\": \"dist/files\\\\example-1.0.tar.gz\",\n              \"hashes\": {\"sha256\": \"f\" * 64}}}]})\n```\nExpected: the lock loads and `packages[0].sdist.filename == 'example-1.0.tar.gz'`.\nActual: `PylockValidationError: Name in 'files\\\\example-1.0.tar.gz' is not consistent with package name 'example' in 'packages[0].sdist'`.\n\nWheels fail too: a wheel `path` of `\"C:/dist\\\\example-1.0-py3-none-any.whl\"` gives `Invalid wheel filename 'dist\\\\example-1.0-py3-none-any.whl'`. A PEP 751 lock written on Windows can contain paths with both separators in either order (`dist\\files/...`, `C:\\dist/...`). The artifact's file name is whatever follows the last separator of either kind, and `to_dict()` must still give back the original data.",
+  "acceptance": [
+    "Paths mixing `/` and `\\` in either order yield the right sdist and wheel `filename`",
+    "Such locks round-trip unchanged through `to_dict()`",
+    "Regression tests are added and the full test suite passes"
+  ],
+  "verify_cmd": "PYTHONPATH=src python3 -m pytest -q -p no:cacheprovider tests --ignore=tests/property",
+  "source": "https://github.com/pypa/packaging/commit/fa52d7237a74effdadd4ad2627d4ca413234cac2"
+}

@@ -1,0 +1,11 @@
+{
+  "title": "Passing `platforms=[]` to the tag generators yields tags for the host platform",
+  "spec": "This is the `packaging` library (Python 3, no dependencies; the code is in `src/packaging/`). Run the tests with `PYTHONPATH=src python3 -m pytest -q -p no:cacheprovider tests --ignore=tests/property` (about a minute).\n\n```python\nfrom packaging import tags\nlist(tags.compatible_tags((3,), \"cp3\", []))\n```\nExpected: `[Tag('cp3', 'none', 'any'), Tag('py3', 'none', 'any')]`, only the platform-independent tags.\nActual: these come after a tag for every host platform: `py3-none-linux_x86_64`, `py3-none-manylinux_2_39_x86_64`, ... (41 tags on Linux x86_64).\n\n`tags.cpython_tags((3, 11), abis=[\"whatever\"], platforms=[])` and `tags.generic_tags(\"sillywalk\", [\"abi\"], [])` should yield nothing, but yield a tag for each host platform. Only `platforms=None` (the default) should mean \"detect the current platform\". An explicitly empty iterable means no platforms.",
+  "acceptance": [
+    "`compatible_tags`, `cpython_tags` and `generic_tags` given an empty `platforms` produce no platform-specific tags",
+    "Omitting `platforms` still uses the current platform",
+    "Regression tests are added and the full test suite passes"
+  ],
+  "verify_cmd": "PYTHONPATH=src python3 -m pytest -q -p no:cacheprovider tests --ignore=tests/property",
+  "source": "https://github.com/pypa/packaging/commit/4e79787a31c99348649bb0dafee2a5078d3595be"
+}
