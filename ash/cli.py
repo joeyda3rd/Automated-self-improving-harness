@@ -84,6 +84,8 @@ def cmd_improve(h, args):
 def cmd_eval(h, args):
     if args.repeats:
         h.cfg["eval_repeats"] = args.repeats
+    if args.effort:
+        h.cfg["effort"] = dict(h.get("effort") or {}, builder=args.effort)
     summary = evals.run_suite(h, os.path.abspath(args.plugin_dir or h.plugin_dir), args.label,
                               names=set(args.only) if args.only else None)
     if summary.get("incomplete"):
@@ -153,6 +155,7 @@ def parser():
     s.add_argument("--label", default="manual")
     s.add_argument("--only", action="append", help="eval name to run (repeatable; default: all)")
     s.add_argument("--repeats", type=int, help="runs per eval (default: eval_repeats in harness.json)")
+    s.add_argument("--effort", choices=["low", "medium", "high", "xhigh", "max"], help="builder effort for this run")
     s.set_defaults(fn=cmd_eval)
     return ap
 

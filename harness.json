@@ -38,5 +38,8 @@
   "improve_eval_repeats": 2,
   "eval_workers": 4,
   "retro_min_tool_errors": 3,
-  "retro_min_turns": 20
+  "retro_min_turns": 20,
+  "effort": {
+    "default": "medium"
+  }
 }

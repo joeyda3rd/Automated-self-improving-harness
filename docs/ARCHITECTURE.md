@@ -37,6 +37,7 @@ Memory (`state/learnings.md`, per-project lessons, `.ash/notes.md`) is a third t
 | **Hooks: PreToolUse on `StructuredOutput`** | The verification gate. When the agent submits `status: done`, the hook runs `ASH_VERIFY_CMD`. On failure it denies the submission and feeds the output back, up to `gate_max` times. It lives here because a `--json-schema` run ends once the result is submitted. |
 | **Hooks: Stop** | A backstop for the same gate when a session ends without structured output. |
 | **Hooks: PreCompact / SessionEnd** | Records compactions and saves the transcript into the run directory for the retrospective. |
+| **Effort** (`--effort`) | Set per role in `harness.json` (`effort`), never inherited. Before this, every builder silently inherited the launching session's `CLAUDE_EFFORT`. |
 | **Budgets** (`--max-budget-usd`) | A cap per session, plus a total cap (`budget_usd_total`) enforced by the loop. |
 | **Permission modes** | `bypassPermissions` by default, so the loop never blocks on a prompt. The guard hook still applies under it, and the harness is meant to run in a container or VM. |
 | **Mods** | `mods/harness-console` is a live pane (`/ash`) and status-line entry that shows the queue, recent runs and every keep/reject decision, for anyone with a Claude Code session open in the project. |

@@ -258,7 +258,8 @@ class LoopTests(unittest.TestCase):
 
         calls = read_jsonl(os.environ["FAKE_LOG"])
         builder = next(c for c in calls if c["role"] == "builder")
-        for flag in ("--plugin-dir", "--json-schema", "--session-id", "--append-system-prompt", "--max-budget-usd"):
+        for flag in ("--plugin-dir", "--json-schema", "--session-id", "--append-system-prompt", "--max-budget-usd",
+                     "--effort"):
             self.assertIn(flag, builder["argv"])
         status = json.loads(read(os.path.join(self.project.ash, "status.json")))
         self.assertEqual(status["state"], "idle")

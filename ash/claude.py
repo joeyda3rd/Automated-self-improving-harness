@@ -72,7 +72,8 @@ IMPROVE_SCHEMA = {
 
 
 INHERITED_SESSION_VARS = {"CLAUDE_CODE_SESSION_ID", "CLAUDE_CODE_CHILD_SESSION", "CLAUDE_PID",
-                          "CLAUDE_CODE_MESSAGING_SOCKET", "CLAUDE_AFTER_LAST_COMPACT", "CLAUDECODE"}
+                          "CLAUDE_CODE_MESSAGING_SOCKET", "CLAUDE_AFTER_LAST_COMPACT", "CLAUDECODE",
+                          "CLAUDE_EFFORT"}  # effort is set explicitly per role, never inherited
 
 
 class BudgetExceeded(RuntimeError):
@@ -187,6 +188,9 @@ def _run_session(harness, *, prompt, role, cwd, run_dir, schema, plugin_dir, res
         cmd += ["--append-system-prompt", role_prompt(plugin_dir, role)]
     if harness.get("model"):
         cmd += ["--model", harness.get("model")]
+    effort = (harness.get("effort") or {}).get(role) or (harness.get("effort") or {}).get("default")
+    if effort:
+        cmd += ["--effort", effort]
     if budget_usd:
         cmd += ["--max-budget-usd", str(budget_usd)]
     if schema:
