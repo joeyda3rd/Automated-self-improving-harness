@@ -118,3 +118,18 @@ Docs: [hooks](https://code.claude.com/docs/en/hooks.md), [headless](https://code
 - The ratchet behaved as designed. A plausible, well-aimed change that did not move the benchmark was not merged. Under a pooled pass rate with a single repeat, it could have been accepted on noise.
 - **Signal is the bottleneck:** 1 of 22 real-bug evals discriminates. A cycle costs about $19, so the gate needs many more failing-but-fair tasks before cycles pay off. The cheapest source is bugs that a strong model fixes *narrowly*: fixes whose upstream tests cover variants beyond the report. The miner can rank candidates by how many hidden test cases go beyond the reported example.
 - **Prose may be too weak a lever.** Prior work (SICA, DGM) found gains in tooling, not instructions. Letting the improver add helper scripts (e.g. a "probe variants" tool that diff-tests related inputs against the pre-change code) is the next experiment worth its cost.
+
+## 7. Narrow reports: where the signal is (2026-10-22)
+
+**Setup:** 29 more real-bug evals from sqlparse (15) and pypa/packaging (14, July–October 2026). Each eval's report was screened twice with the current harness, and almost all passed. sqlparse scored 14/15; the one failure, `sq-comment-grouping`, needs visible tests to be broken and is excluded as unfair.
+
+**The finding:** the bug reports had been written generously, spelling out the general rule the hidden tests check. Real reports are narrow: one reproducer, no rule. So 37 *narrow* variants were made, with the same hidden upstream tests and the report cut to one example plus "similar inputs are probably affected too; please fix the underlying problem". Only evals whose hidden tests go beyond the reported case got one.
+
+| Report style | Runs | Pass rate |
+|---|---|---|
+| generous (rule spelled out), real-bug evals | 104 | ~98% |
+| narrow (one example), same hidden tests | 74 | **58%** |
+
+- **Result:** 15 narrow variants failed both runs and 1 failed one run; every one of them passes in its generous form.
+- **Conclusion:** the builder reliably fixes what is described and often misses what a maintainer would also cover. That is the habit a better harness should improve, and now there is a benchmark that can measure it.
+- **Caveat:** before these become the gate, each failure is audited for fairness. Could a careful engineer have inferred the hidden expectation from the report and the codebase, or is it a judgement call no harness can learn?
