@@ -78,7 +78,7 @@ def baseline(harness, commit):
     if "per_task" not in cache.get(key, {}):
         log(f"benchmarking baseline {commit[:12]} on {len(evals.gate_set(harness))} evals")
         summary = evals.run_suite(harness, harness.plugin_dir, f"baseline-{commit[:12]}",
-                                  names=evals.gate_set(harness), repeats=gate_repeats(harness))
+                                  names=evals.gate_set(harness), repeats=gate_repeats(harness), resumable=True)
         if summary.get("incomplete"):
             raise BudgetExceeded("total budget reached while benchmarking the baseline")
         cache[key] = summary
@@ -94,6 +94,9 @@ def cycle(harness):
     if not gitops.is_repo(harness.home):
         log("harness is not a git repository; skipping")
         return None
+    import glob
+    for stale in glob.glob(os.path.join(harness.state, "worktrees", "improve-*")):  # left by an interrupted cycle
+        gitops.remove_worktree(harness.home, stale, "ash-improve/" + os.path.basename(stale)[len("improve-"):])
     mutable = harness.get("mutable_paths", [])
     base_commit = gitops.head(harness.home)
     base = baseline(harness, base_commit)

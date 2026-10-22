@@ -22,7 +22,7 @@ import time
 
 from . import gitops
 from .claude import BUILD_SCHEMA, BudgetExceeded, run_session
-from .config import append_jsonl, load_json
+from .config import append_jsonl, load_json, save_json
 from .tasks import card
 
 
@@ -111,8 +111,14 @@ def gate_set(harness):
             if any(fnmatch.fnmatch(os.path.basename(d), p) for p in patterns)}
 
 
-def run_suite(harness, plugin_dir, label, names=None, repeats=None):
-    """Score a plugin directory (current harness or a candidate) on the evals named (default: all)."""
+def run_suite(harness, plugin_dir, label, names=None, repeats=None, resumable=False):
+    """Score a plugin directory (current harness or a candidate) on the evals named (default: all).
+
+    With resumable=True each finished run is saved under state/eval_results/<label>/ and reused
+    if the suite is started again with the same label, so an interrupted benchmark (a container
+    restart) only pays for the runs it had not finished. Only use it when the label pins the
+    exact plugin being measured, e.g. a baseline keyed by harness commit.
+    """
     from concurrent.futures import ThreadPoolExecutor
 
     jobs = [(d, r) for d in discover(harness) if names is None or os.path.basename(d) in names
@@ -124,7 +130,14 @@ def run_suite(harness, plugin_dir, label, names=None, repeats=None):
         if incomplete:
             return None
         try:
-            return run_one(harness, job[0], plugin_dir, label, job[1])
+            if not resumable:
+                return run_one(harness, job[0], plugin_dir, label, job[1])
+            saved = os.path.join(harness.state, "eval_results", label, f"{os.path.basename(job[0])}-{job[1]}.json")
+            if os.path.exists(saved):
+                return load_json(saved)
+            result = run_one(harness, job[0], plugin_dir, label, job[1])
+            save_json(saved, result)
+            return result
         except BudgetExceeded:
             incomplete = True
             return None

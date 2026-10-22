@@ -290,6 +290,14 @@ class LoopTests(unittest.TestCase):
         self.assertEqual(sorted(r["repeat"] for r in summary["results"]), list(range(8)))
         self.assertLess(elapsed, 8 * 0.5 * 0.6, "8 half-second sessions on 4 workers overlap")
 
+    def test_resumable_suite_reuses_finished_runs(self):
+        os.environ["FAKE_LOG"] = os.path.join(self.tmp, "calls.jsonl")
+        first = evals.run_suite(self.harness, self.harness.plugin_dir, "baseline-x", repeats=3, resumable=True)
+        os.remove(os.path.join(self.harness.state, "eval_results", "baseline-x", "toy-1.json"))  # "interrupted"
+        again = evals.run_suite(self.harness, self.harness.plugin_dir, "baseline-x", repeats=3, resumable=True)
+        self.assertEqual(len(read_jsonl(os.environ["FAKE_LOG"])), 4, "only the missing run is paid for again")
+        self.assertEqual(first["per_task"], again["per_task"])
+
     def test_parallel_sessions_cannot_overspend(self):
         os.environ["FAKE_SLEEP"] = "0.2"
         start = engine.spent(self.harness)
