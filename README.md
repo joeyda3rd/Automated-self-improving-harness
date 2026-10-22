@@ -62,6 +62,13 @@ To watch the loop from inside Claude Code, load the console mod in a session ope
 
 How the design was checked against Claude Code's real hook behaviour and prior work on self-improving agents (Darwin Gödel Machine, SICA, memory research) is in [docs/RESEARCH.md](docs/RESEARCH.md).
 
+## Status (2026-10-22)
+
+- **Build loop:** works end to end on real assignments. A static site generator went from plan to 8 merged tasks for $1.73 and passed an independent acceptance check.
+- **Self-improvement loop:** runs safely. It has rejected 8 proposals that did not beat the benchmark and accepted 1 that did (builder effort `high`).
+- **Benchmark:** 95 evals. The gate is built from real upstream bug fixes with narrow, user-style reports, audited for fairness. On that gate the harness passes about 55%.
+- **Main open problem:** benchmark noise at 2 runs per eval. See [docs/RESEARCH.md](docs/RESEARCH.md) §9 for the full record and next steps.
+
 ## Development
 
 ```bash

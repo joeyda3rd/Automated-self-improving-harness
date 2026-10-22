@@ -175,3 +175,26 @@ Over the baseline and the 4 candidates, the five stuck evals passed 0 of 40 runs
 
 - **Decision:** the paired ratchet accepts high effort (more evals improved than regressed), so builders now run at `high`. The evidence is thin (two evals, one run each), and the same rule would undo it if a later benchmark disagrees.
 - **Conclusion:** the other five fair failures stayed at 0 even with more thinking. Both prose and thinking time fail to move them, which points at a model capability limit on inferring unstated variants. The remaining levers are tools that generate and check variants (not tools that replay existing inputs), or a different model.
+
+## 9. Final cycles at high effort, and where things stand (2026-10-22)
+
+Three more cycles ran on the high-effort baseline; all were rejected:
+- **Prose:** write a regression test for the reported input and its family. Improved on none, regressed on `md-unterminated-html-narrow`.
+- **Prose:** verify sibling inputs. Same result.
+- **Tool (the first one the improver wrote):** `plugin/bin/before-after`, which runs a command on the stashed original and on the edited tree and diffs the outputs, plus a skill step telling builders to run it over the reported input and its neighbours. It **improved on `sq-begin-transaction-narrow`**, a task stuck at 0 in every earlier run. It regressed on `md-unterminated-html-narrow`. With one win and one loss it was rejected.
+
+**Noise is now the binding constraint.** `md-unterminated-html-narrow` has "regressed" in 4 of 7 candidates. Its pass rate swings between 0.5 and 1.0 with no change to the harness, so with 2 runs per eval it vetoes changes on noise alone. Next steps, in order:
+1. Raise `improve_eval_repeats` to 4 for the gate. It costs twice as much, but per-eval rates become meaningful.
+2. Treat evals whose baseline rate is strictly between 0 and 1 as noisy. A change should need a gain elsewhere that exceeds their swing.
+3. Re-run the `before-after` tool candidate under that rule. It is the only change so far to move a stuck eval.
+
+**Cumulative result:**
+
+| Measure | Value |
+|---|---|
+| Benchmark | 95 validated evals: 16 synthetic, 51 real-bug (generous reports), 28 narrow variants (audited; 6 fair failures form the gate) |
+| Improvement cycles run | 8 real cycles + 1 hand-run effort experiment |
+| Accepted | 1: builder effort medium → high (gate 45% → 55%, +14% cost) |
+| Rejected | 8, including 7 prose changes and 1 tool. Nothing that failed the ratchet was merged, and no kernel file was ever touched by the improver |
+| Kernel bugs found by evidence | Stop gate bypassed under `--json-schema`; tool errors never recorded; inherited session id and effort; Pygments breaking evals; a system-wide `packaging` shadowing the code under test; budget not covering evals |
+| Total spend | about $91 of the $100 budget |
