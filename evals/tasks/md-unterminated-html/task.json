@@ -1,12 +1,12 @@
 {
   "title": "Everything after an unterminated `</tag` is dropped from the document",
-  "spec": "This is the Python-Markdown library (Python 3, no dependencies). Run the tests with `python3 -m unittest discover -s tests -q`.\n\nAn end tag that is never closed with `>` makes the rest of the document disappear. This bites anyone documenting shell redirections in inline code.\n\nInput: `markdown.markdown('Run `cmd 2</dev/null` here.\\n\\nThis paragraph should not disappear.')`\nExpected: `<p>Run <code>cmd 2&lt;/dev/null</code> here.</p>\\n<p>This paragraph should not disappear.</p>`\nActual: `<p>Run `cmd 2</p>`\n\nIt is not specific to code spans: `foo </bar\\n\\nbaz` gives `<p>foo </p>` instead of `<p>foo &lt;/bar</p>\\n<p>baz</p>`. An incomplete end tag (with or without a name, or with trailing text before any `>`) should be treated as literal text, and the content after it must be kept.",
+  "spec": "This is the Python-Markdown library (Python 3, no dependencies). Run the tests with `python3 run_tests.py`.\n\nAn end tag that is never closed with `>` makes the rest of the document disappear. This bites anyone documenting shell redirections in inline code.\n\nInput: `markdown.markdown('Run `cmd 2</dev/null` here.\\n\\nThis paragraph should not disappear.')`\nExpected: `<p>Run <code>cmd 2&lt;/dev/null</code> here.</p>\\n<p>This paragraph should not disappear.</p>`\nActual: `<p>Run `cmd 2</p>`\n\nIt is not specific to code spans: `foo </bar\\n\\nbaz` gives `<p>foo </p>` instead of `<p>foo &lt;/bar</p>\\n<p>baz</p>`. An incomplete end tag (with or without a name, or with trailing text before any `>`) should be treated as literal text, and the content after it must be kept.",
   "acceptance": [
     "Both reported inputs render as expected",
     "Other incomplete end tags (e.g. `</dev`, `</ab c`, `</dev/`) in code spans or text do not swallow following content",
     "Regression tests are added",
     "The full test suite passes"
   ],
-  "verify_cmd": "python3 -m unittest discover -s tests -q",
+  "verify_cmd": "python3 run_tests.py",
   "source": "https://github.com/Python-Markdown/markdown/commit/7c265bc79d8946ac42bb61a39f9052c8e261340f"
 }

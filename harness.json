@@ -24,8 +24,16 @@
     "docs/"
   ],
   "improve_evals": [
-    "md-*",
-    "mi-*"
+    "md-attr-name-sanitize-narrow",
+    "md-em-strong-nesting-narrow",
+    "md-html-comment-paragraph-narrow",
+    "md-unterminated-html-narrow",
+    "sq-begin-transaction-narrow",
+    "sq-splitter-nesting-narrow",
+    "sq-leading-dot-float-narrow",
+    "mi-bucket-invented-key-narrow",
+    "pk-tags-empty-platforms-narrow",
+    "md-reflink-backticks-narrow"
   ],
   "improve_eval_repeats": 2,
   "eval_workers": 4,

@@ -1,12 +1,12 @@
 {
   "title": "Text is lost when a run of backticks is closed by a longer run",
-  "spec": "This is the Python-Markdown library (Python 3, no dependencies). Run the tests with `python3 -m unittest discover -s tests -q`.\n\nWhen a run of backticks is followed later by a longer run of backticks, the text in between is thrown away and an empty code element is produced.\n\nInput: `markdown.markdown('a ``` b ````` c')`\nExpected: `<p>a ``` b ````` c</p>`\nActual: `<p>a <code></code> c</p>`\n\nA code span only closes with a run of exactly the same number of backticks, so neither run here forms a code span and all the text should be kept literally. Similarly `a `` b ``` c` currently gives `<p>a <code>b</code> c</p>` but should stay as plain text. The case where the closing run is shorter must keep working as it does now: `a ``` b `` c` renders as `<p>a <code>` b</code> c</p>`.",
+  "spec": "This is the Python-Markdown library (Python 3, no dependencies). Run the tests with `python3 run_tests.py`.\n\nWhen a run of backticks is followed later by a longer run of backticks, the text in between is thrown away and an empty code element is produced.\n\nInput: `markdown.markdown('a ``` b ````` c')`\nExpected: `<p>a ``` b ````` c</p>`\nActual: `<p>a <code></code> c</p>`\n\nA code span only closes with a run of exactly the same number of backticks, so neither run here forms a code span and all the text should be kept literally. Similarly `a `` b ``` c` currently gives `<p>a <code>b</code> c</p>` but should stay as plain text. The case where the closing run is shorter must keep working as it does now: `a ``` b `` c` renders as `<p>a <code>` b</code> c</p>`.",
   "acceptance": [
     "The reported input renders as expected with no text lost",
     "A longer closing run never closes a code span; the shorter-closing-run case is unchanged",
     "A regression test is added",
     "The full test suite passes"
   ],
-  "verify_cmd": "python3 -m unittest discover -s tests -q",
+  "verify_cmd": "python3 run_tests.py",
   "source": "https://github.com/Python-Markdown/markdown/commit/59f6dbc53bf4688c66ca832abb66c6a424f0626f"
 }

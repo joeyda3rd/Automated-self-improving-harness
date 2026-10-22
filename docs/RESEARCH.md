@@ -133,3 +133,19 @@ Docs: [hooks](https://code.claude.com/docs/en/hooks.md), [headless](https://code
 - **Result:** 15 narrow variants failed both runs and 1 failed one run; every one of them passes in its generous form.
 - **Conclusion:** the builder reliably fixes what is described and often misses what a maintainer would also cover. That is the habit a better harness should improve, and now there is a benchmark that can measure it.
 - **Caveat:** before these become the gate, each failure is audited for fairness. Could a careful engineer have inferred the hidden expectation from the report and the codebase, or is it a judgement call no harness can learn?
+
+**Fairness audit (2026-10-22).** Each of the 16 narrow failures was audited by rebuilding the builder's final workspace from its transcript and re-running the hidden tests. The question was whether a strong human engineer, given only the report and the codebase, would be blamed for missing the failing case.
+- **6 FAIR:** the same bug on a closely related input, or a regression the builder introduced in neighbouring behaviour that already worked. These are `md-attr-name-sanitize`, `md-em-strong-nesting`, `md-html-comment-paragraph`, `md-unterminated-html`, `sq-begin-transaction` and `sq-splitter-nesting` (narrow variants).
+- **9 UNFAIR, 1 MIXED:** the hidden tests required something the report and the codebase don't imply:
+  - a private method's signature;
+  - deduplication or strictness policies;
+  - an unrelated improvement bundled into the same upstream commit;
+  - T-SQL's `GO <count>`;
+  - behaviour that contradicts the seed's own test.
+
+  Those narrow variants were deleted; their generous originals remain.
+- **Lesson:** an upstream fix commit is not a clean task. Narrowing a report exposes everything else the commit did, so narrow evals need a fairness audit before they can gate anything.
+
+**Environment bug found by the audit.** Installing pytest pulled in Pygments 2.21, which un-skipped two CodeHilite tests that fail with that version. Two Markdown evals had become impossible to pass and a third could only be passed by patching unrelated tests; the validator had run before the install. All Markdown evals now run through a `run_tests.py` that hides Pygments, as the suite's original conditions did, and all re-validate.
+
+**The gate is now** the 6 fair narrow failures plus 4 passing narrow canaries, one per project, marked `smoke`. That is 10 evals × 2 runs, about $4 per benchmark.

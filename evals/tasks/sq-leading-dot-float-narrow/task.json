@@ -7,5 +7,6 @@
     "the full test suite passes"
   ],
   "verify_cmd": "PYTHONPATH=. python3 -m pytest -q -p no:cacheprovider tests",
-  "source": "https://github.com/andialbrecht/sqlparse/commit/a194d3187b04b0aed7a935c3401f068236fb6264"
+  "source": "https://github.com/andialbrecht/sqlparse/commit/a194d3187b04b0aed7a935c3401f068236fb6264",
+  "smoke": true
 }

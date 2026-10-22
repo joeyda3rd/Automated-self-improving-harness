@@ -1,12 +1,12 @@
 {
   "title": "Inline HTML with `<` or `>` inside a quoted attribute value is escaped as text",
-  "spec": "This is the Python-Markdown library (Python 3, no dependencies). Run the tests with `python3 -m unittest discover -s tests -q`.\n\nInline HTML tags whose quoted attribute value contains `<` or `>` are not recognised as HTML. The opening tag is escaped and shown as text, while the closing tag is passed through, which produces broken output.\n\nInput: `markdown.markdown('<span data-tip-txt=\"<kbd>Ctrl</kbd>\">Anything</span>')`\nExpected: `<p><span data-tip-txt=\"<kbd>Ctrl</kbd>\">Anything</span></p>`\nActual: `<p>&lt;span data-tip-txt=\"<kbd>Ctrl</kbd>\"&gt;Anything</span></p>`\n\nHTML allows `<` and `>` inside quoted attribute values, and other parts of the library already accept them. Other tags and single-quoted values are affected the same way: `Text <abbr title=\"1 < 2\">x</abbr> end` should render as `<p>Text <abbr title=\"1 < 2\">x</abbr> end</p>`.",
+  "spec": "This is the Python-Markdown library (Python 3, no dependencies). Run the tests with `python3 run_tests.py`.\n\nInline HTML tags whose quoted attribute value contains `<` or `>` are not recognised as HTML. The opening tag is escaped and shown as text, while the closing tag is passed through, which produces broken output.\n\nInput: `markdown.markdown('<span data-tip-txt=\"<kbd>Ctrl</kbd>\">Anything</span>')`\nExpected: `<p><span data-tip-txt=\"<kbd>Ctrl</kbd>\">Anything</span></p>`\nActual: `<p>&lt;span data-tip-txt=\"<kbd>Ctrl</kbd>\"&gt;Anything</span></p>`\n\nHTML allows `<` and `>` inside quoted attribute values, and other parts of the library already accept them. Other tags and single-quoted values are affected the same way: `Text <abbr title=\"1 < 2\">x</abbr> end` should render as `<p>Text <abbr title=\"1 < 2\">x</abbr> end</p>`.",
   "acceptance": [
     "The reported input renders as expected",
     "Inline tags with `<` or `>` in single- or double-quoted attribute values are passed through as raw HTML",
     "A regression test is added",
     "The full test suite passes"
   ],
-  "verify_cmd": "python3 -m unittest discover -s tests -q",
+  "verify_cmd": "python3 run_tests.py",
   "source": "https://github.com/Python-Markdown/markdown/commit/7a29324e03725fe279790c2f59d13ebda0eecbe1"
 }

@@ -1,11 +1,11 @@
 {
   "title": "An HTML comment on its own line inside a `<span>` splits the paragraph in two",
-  "spec": "This is the Python-Markdown library (Python 3, no dependencies). Run the tests with `python3 -m unittest discover -s tests -q`.\n\nAn HTML comment on its own line inside a `<span>` is pulled out of the paragraph, which is split around it, leaving broken, unbalanced HTML.\n\nInput: `markdown.markdown('<span>\\n<!-- comment -->\\n</span>\\n')`\nExpected: `<p><span>\\n<!-- comment -->\\n</span></p>`\nActual: `<p><span></p>\\n<!-- comment -->\\n<p></span></p>`\n\nSimilar inputs are probably affected too; please fix the underlying problem rather than just this case.",
+  "spec": "This is the Python-Markdown library (Python 3, no dependencies). Run the tests with `python3 run_tests.py`.\n\nAn HTML comment on its own line inside a `<span>` is pulled out of the paragraph, which is split around it, leaving broken, unbalanced HTML.\n\nInput: `markdown.markdown('<span>\\n<!-- comment -->\\n</span>\\n')`\nExpected: `<p><span>\\n<!-- comment -->\\n</span></p>`\nActual: `<p><span></p>\\n<!-- comment -->\\n<p></span></p>`\n\nSimilar inputs are probably affected too; please fix the underlying problem rather than just this case.",
   "acceptance": [
     "the reported example produces the expected output",
     "the underlying problem is fixed, not just the reported input",
     "the full test suite passes"
   ],
-  "verify_cmd": "python3 -m unittest discover -s tests -q",
+  "verify_cmd": "python3 run_tests.py",
   "source": "https://github.com/Python-Markdown/markdown/commit/0bf535bc406c95dad66050f07c8402af03fe07d5"
 }

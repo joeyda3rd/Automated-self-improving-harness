@@ -7,5 +7,6 @@
     "the full test suite passes"
   ],
   "verify_cmd": "PYTHONPATH=src python3 -m pytest -q -p no:cacheprovider tests --ignore=tests/property",
-  "source": "https://github.com/pypa/packaging/commit/4e79787a31c99348649bb0dafee2a5078d3595be"
+  "source": "https://github.com/pypa/packaging/commit/4e79787a31c99348649bb0dafee2a5078d3595be",
+  "smoke": true
 }

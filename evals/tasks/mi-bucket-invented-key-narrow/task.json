@@ -7,5 +7,6 @@
     "the full test suite passes"
   ],
   "verify_cmd": "python3 run_tests.py",
-  "source": "https://github.com/more-itertools/more-itertools/commit/2b8d5cddce4ea01f88a973551cd50479cf5fa45f"
+  "source": "https://github.com/more-itertools/more-itertools/commit/2b8d5cddce4ea01f88a973551cd50479cf5fa45f",
+  "smoke": true
 }

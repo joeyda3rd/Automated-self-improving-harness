@@ -1,11 +1,11 @@
 {
   "title": "Attribute name on a fenced code block breaks out of the `<code>` tag and injects HTML",
-  "spec": "This is the Python-Markdown library (Python 3, no dependencies). Run the tests with `python3 -m unittest discover -s tests -q`.\n\nWith `fenced_code` and `attr_list`, an attribute name on a fenced code block can break out of the `<code>` tag, so untrusted Markdown can inject live markup.\n\nInput: `markdown.markdown('``` { .python x><svg/onload=alert(1) }\\n# Some python code\\n```', extensions=['markdown.extensions.fenced_code', 'markdown.extensions.attr_list'])`\n\nExpected: `<pre><code class=\"language-python\" x_svg_onload=\"alert(1)\"># Some python code\\n</code></pre>`\nActual: `<pre><code class=\"language-python\" x><svg/onload=\"alert(1)\"># Some python code\\n</code></pre>`\n\nSimilar inputs are probably affected too; please fix the underlying problem rather than just this case.",
+  "spec": "This is the Python-Markdown library (Python 3, no dependencies). Run the tests with `python3 run_tests.py`.\n\nWith `fenced_code` and `attr_list`, an attribute name on a fenced code block can break out of the `<code>` tag, so untrusted Markdown can inject live markup.\n\nInput: `markdown.markdown('``` { .python x><svg/onload=alert(1) }\\n# Some python code\\n```', extensions=['markdown.extensions.fenced_code', 'markdown.extensions.attr_list'])`\n\nExpected: `<pre><code class=\"language-python\" x_svg_onload=\"alert(1)\"># Some python code\\n</code></pre>`\nActual: `<pre><code class=\"language-python\" x><svg/onload=\"alert(1)\"># Some python code\\n</code></pre>`\n\nSimilar inputs are probably affected too; please fix the underlying problem rather than just this case.",
   "acceptance": [
     "the reported example produces the expected output",
     "the underlying problem is fixed, not just the reported input",
     "the full test suite passes"
   ],
-  "verify_cmd": "python3 -m unittest discover -s tests -q",
+  "verify_cmd": "python3 run_tests.py",
   "source": "https://github.com/Python-Markdown/markdown/commit/a27428b6f6cc74662fdd471293438eedcdf0079f"
 }
