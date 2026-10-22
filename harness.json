@@ -40,6 +40,7 @@
   "retro_min_tool_errors": 3,
   "retro_min_turns": 20,
   "effort": {
-    "default": "medium"
+    "default": "medium",
+    "builder": "high"
   }
 }

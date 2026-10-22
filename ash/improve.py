@@ -59,7 +59,10 @@ def cache_key(harness, commit):
     """A baseline is only reusable for the same harness, eval set and repeat count."""
     import hashlib
     names = ",".join(sorted(evals.gate_set(harness)))
-    return f"{commit}|{hashlib.sha1(names.encode()).hexdigest()[:8]}|r{gate_repeats(harness)}"
+    key = f"{commit}|{hashlib.sha1(names.encode()).hexdigest()[:8]}|r{gate_repeats(harness)}"
+    effort = harness.get("effort") or {}
+    builder_effort = effort.get("builder") or effort.get("default")
+    return key + (f"|e{builder_effort}" if builder_effort and builder_effort != "medium" else "")
 
 
 def benchmark_failures(summary, limit=8):

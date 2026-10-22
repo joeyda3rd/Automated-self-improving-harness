@@ -149,3 +149,29 @@ Docs: [hooks](https://code.claude.com/docs/en/hooks.md), [headless](https://code
 **Environment bug found by the audit.** Installing pytest pulled in Pygments 2.21, which un-skipped two CodeHilite tests that fail with that version. Two Markdown evals had become impossible to pass and a third could only be passed by patching unrelated tests; the validator had run before the install. All Markdown evals now run through a `run_tests.py` that hides Pygments, as the suite's original conditions did, and all re-validate.
 
 **The gate is now** the 6 fair narrow failures plus 4 passing narrow canaries, one per project, marked `smoke`. That is 10 evals × 2 runs, about $4 per benchmark.
+
+## 8. Four improvement cycles on the audited gate, then effort (2026-10-22)
+
+**Gate:** the 6 fair narrow failures plus 4 canaries, 2 runs each. At medium builder effort the baseline passed 45%. Five of the six fair evals were 0/2; `md-unterminated-html-narrow` was 1/2.
+
+**Four improver proposals, all rejected.** Each was one more paragraph in `build-task`:
+- grep for other callers and mirrored code;
+- reproduce first and prefer existing helpers;
+- always run the reviewer;
+- keep the fix narrow and compare neighbouring inputs.
+
+Over the baseline and the 4 candidates, the five stuck evals passed 0 of 40 runs. Two candidates were rejected for dropping `md-unterminated-html-narrow` from 1/2 to 0/2, which is probably noise at 2 runs, but the rule is conservative. No proposal used the new `plugin/bin/` tool option. The four cycles cost $20.
+
+**A hand-made tool, dropped before spending on it.** `behavior-diff` replays every string literal in the test suite through the HEAD code and the working tree, and lists outputs that changed. On the builders' actual failed attempts it reported **zero** changed outputs from 1,787 inputs. Their regressions only show up in input combinations no existing test contains, so the tool could not have helped, and it was not added.
+
+**Hidden variable found:** every builder had silently inherited the launching session's `CLAUDE_EFFORT=medium`. Effort is now an explicit per-role setting.
+
+**Effort experiment, same gate:**
+
+| Builder effort | Pass rate | Mean cost per run | Changed evals |
+|---|---|---|---|
+| medium (baseline) | 45% | $0.197 | |
+| **high** | **55%** | $0.224 (+14%) | `md-unterminated-html` 0.5→1.0, `sq-splitter-nesting` 0→0.5, no regressions |
+
+- **Decision:** the paired ratchet accepts high effort (more evals improved than regressed), so builders now run at `high`. The evidence is thin (two evals, one run each), and the same rule would undo it if a later benchmark disagrees.
+- **Conclusion:** the other five fair failures stayed at 0 even with more thinking. Both prose and thinking time fail to move them, which points at a model capability limit on inferring unstated variants. The remaining levers are tools that generate and check variants (not tools that replay existing inputs), or a different model.
