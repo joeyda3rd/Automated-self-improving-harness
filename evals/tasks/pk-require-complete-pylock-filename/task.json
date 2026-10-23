@@ -1,0 +1,15 @@
+{
+  "title": "is_valid_pylock_path accepts file names with a trailing newline",
+  "spec": "This is the `packaging` library (Python 3, no dependencies; the code is in `src/packaging/`). Run the tests with `PYTHONPATH=src python3 -m pytest -q -p no:cacheprovider tests --ignore=tests/property` (about a minute).\n\n`packaging.pylock.is_valid_pylock_path` should only accept complete file names of the form `pylock.toml` or `pylock.<name>.toml`. A name with extra trailing characters is wrongly accepted.\n\n```python\nfrom pathlib import Path\nfrom packaging.pylock import is_valid_pylock_path\nprint(is_valid_pylock_path(Path(\"pylock.spam.toml\\n\")))\n```\n\nEXPECTED: `False`\nACTUAL: `True`\n\nThe rule is that the whole file name must match the pattern, with nothing after the final `.toml` (not even a newline). Existing behaviour must stay: `pylock.toml` and `pylock.spam.toml` are valid; `pylock.json` and `pylock..toml` are invalid.",
+  "acceptance": [
+    "is_valid_pylock_path(Path(\"pylock.spam.toml\\n\")) returns False",
+    "pylock.toml and pylock.spam.toml still return True",
+    "pylock.json and pylock..toml still return False"
+  ],
+  "verify_cmd": "PYTHONPATH=src python3 -m pytest -q -p no:cacheprovider tests --ignore=tests/property",
+  "source": "https://github.com/pypa/packaging/commit/ae9d39c13b5f5485b6295eb100b08ef9c3dde852",
+  "curation": {
+    "state": "pool",
+    "source": "packaging"
+  }
+}

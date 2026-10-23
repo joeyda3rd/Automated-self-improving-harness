@@ -1,0 +1,15 @@
+{
+  "title": "CodeHilite doesn't escape the language name in the output class attribute",
+  "spec": "This is the Python-Markdown library (Python 3, no dependencies). Run the tests with `python3 run_tests.py`.\n\nWith Pygments disabled, the language name is put into the `<code>` class attribute without HTML-escaping, so a crafted name breaks out of the attribute.\n\n```python\nfrom markdown.extensions.codehilite import CodeHilite\nprint(CodeHilite('text', lang='\"><script>', use_pygments=False).hilite())\n```\n\nEXPECTED:\n```\n<pre class=\"codehilite\"><code class=\"language-&quot;&gt;&lt;script&gt;\">text\n</code></pre>\n```\nACTUAL:\n```\n<pre class=\"codehilite\"><code class=\"language-\"><script>\">text\n</code></pre>\n```\n\nSame for other special characters: `lang='a&b<c'` should give `class=\"language-a&amp;b&lt;c\"` but currently gives `class=\"language-a&b<c\"`. The language name (after the prefix) must be escaped as an HTML attribute value, i.e. `&`, `<`, `>` and `\"` become entities. Normal names like `php` or `python` and custom `lang_prefix` values must keep working as before.",
+  "acceptance": [
+    "lang='\"><script>' with use_pygments=False renders class=\"language-&quot;&gt;&lt;script&gt;\"",
+    "Ampersands and angle brackets in the language name are escaped too",
+    "Ordinary language names and lang_prefix output are unchanged; existing tests pass"
+  ],
+  "verify_cmd": "python3 run_tests.py",
+  "source": "https://github.com/Python-Markdown/markdown/commit/3d70cfccdc0b54c0783edd5e7d168c5d8bfc0b1e",
+  "curation": {
+    "state": "pool",
+    "source": "markdown"
+  }
+}

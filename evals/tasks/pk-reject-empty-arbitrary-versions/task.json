@@ -1,0 +1,16 @@
+{
+  "title": "Specifier with `===` and no version is accepted instead of rejected",
+  "spec": "This is the `packaging` library (Python 3, no dependencies; the code is in `src/packaging/`). Run the tests with `PYTHONPATH=src python3 -m pytest -q -p no:cacheprovider tests --ignore=tests/property` (about a minute).\n\nThe arbitrary-equality operator `===` is accepted with nothing after it, though it needs a version string.\n\n```python\nfrom packaging.specifiers import Specifier, SpecifierSet\nfrom packaging.requirements import Requirement\nSpecifier(\"===\")\nSpecifier(\"=== \")\nSpecifierSet(\">=1,===\")\nRequirement(\"foo===\")\n```\n\nExpected: each raises `InvalidSpecifier` (`Requirement` raises `InvalidRequirement`).\nActual: each succeeds, e.g. `Specifier('===')` and `Requirement('foo===')`.\n\nAn empty (or whitespace-only) version after `===` must be invalid everywhere specifiers are parsed. `Specifier(\"===1.0\")` and non-PEP 440 strings like `===foobar` must keep working.",
+  "acceptance": [
+    "Specifier(\"===\") and Specifier(\"=== \") raise InvalidSpecifier",
+    "SpecifierSet containing a bare `===` raises InvalidSpecifier",
+    "Requirement(\"foo===\") raises InvalidRequirement",
+    "Specifier(\"===foobar\") and Specifier(\"===1.0\") still parse"
+  ],
+  "verify_cmd": "PYTHONPATH=src python3 -m pytest -q -p no:cacheprovider tests --ignore=tests/property",
+  "source": "https://github.com/pypa/packaging/commit/2aada00b158feb36109d77dc91d62baa91f7d400",
+  "curation": {
+    "state": "pool",
+    "source": "packaging"
+  }
+}

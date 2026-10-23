@@ -1,0 +1,15 @@
+{
+  "title": "TOC entries show stray text when a heading contains an HTML tag whose attribute value includes \">\"",
+  "spec": "This is the Python-Markdown library (Python 3, no dependencies). Run the tests with `python3 run_tests.py`.\n\nWith the `toc` extension, a heading containing inline HTML whose quoted attribute value has a `>` gets a garbled TOC name, label and id.\n\nExample 1:\n```python\nmd = markdown.Markdown(extensions=['toc'])\nmd.convert('# <abbr title=\"Python > 3\">Python</abbr> support')\nprint(md.toc); print(md.toc_tokens[0]['name'], md.toc_tokens[0]['id'])\n```\nEXPECTED: link `<a href=\"#python-support\">Python support</a>`, name `Python support`, id `python-support`.\nACTUAL: name is `3\">Python support`, id is `3python-support`, link text is `3&quot;&gt;Python support`.\n\nExample 2 (custom label via attr_list):\n```python\nmd = markdown.Markdown(extensions=['toc', 'attr_list'])\nmd.convert('''# Python support {data-toc-label='<abbr title=\"Python > 3\">Python</abbr> &amp; support'}''')\nprint(md.toc_tokens[0]['name'])\n```\nEXPECTED: `Python &amp; support` (TOC link text `Python &amp; support`).\nACTUAL: `3\"&gt;Python &amp; support`.\n\nRule: when TOC names are derived from heading text or `data-toc-label`, HTML tags must be removed as whole tags, so a `>` inside a single- or double-quoted attribute value does not end the tag. The `html` field in `toc_tokens` and the rendered heading are unchanged.",
+  "acceptance": [
+    "A heading with `<abbr title=\"Python > 3\">Python</abbr> support` (double or single quotes) yields TOC name `Python support` and id `python-support`.",
+    "A `data-toc-label` containing a tag with `>` in a quoted attribute gives a clean TOC name, e.g. `Python &amp; support`.",
+    "Existing TOC tests still pass (`python3 run_tests.py`)."
+  ],
+  "verify_cmd": "python3 run_tests.py",
+  "source": "https://github.com/Python-Markdown/markdown/commit/5e335ef7e7be8ff6692363c56d1352e71b8ef279",
+  "curation": {
+    "state": "pool",
+    "source": "markdown"
+  }
+}

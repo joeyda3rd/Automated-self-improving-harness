@@ -1,0 +1,19 @@
+{
+  "title": "sqlparse.split doesn't split after BEGIN...END block containing DROP TABLE IF EXISTS",
+  "spec": "This is the sqlparse library (Python 3, no dependencies). Run the tests with `PYTHONPATH=. python3 -m pytest -q -p no:cacheprovider tests`.\n\n```python\nimport sqlparse\nsql = \"\"\"CREATE TASK t1 AS\nBEGIN\n    CREATE OR REPLACE TABLE temp1;\n    DROP TABLE IF EXISTS temp1;\nEND;\nEXECUTE TASK t1;\"\"\"\nprint(len(sqlparse.split(sql)))\n```\n\nExpected: 2 statements (the CREATE TASK ... END; and `EXECUTE TASK t1;`).\nActual: 1 statement (everything stays in one string).\n\nSimilar inputs are probably affected too; please fix the underlying problem rather than just this case.",
+  "acceptance": [
+    "The example splits into exactly 2 statements",
+    "Plain DROP TABLE IF EXISTS foo; SELECT 1; still splits into 2",
+    "Existing tests still pass"
+  ],
+  "verify_cmd": "PYTHONPATH=. python3 -m pytest -q -p no:cacheprovider tests",
+  "source": "https://github.com/andialbrecht/sqlparse/commit/e92a032c81d51a6645b4f8c32470481894818ba0",
+  "curation": {
+    "state": "audited",
+    "source": "sqlparse",
+    "narrow_of": "sq-handling-if-exists-statements",
+    "screen_rate": 1.0,
+    "screen_label": "screen-20261023-033148",
+    "verdict": "passing"
+  }
+}

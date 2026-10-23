@@ -1,0 +1,15 @@
+{
+  "title": "interleave_evenly raises IndexError when given no iterables",
+  "spec": "This is the more-itertools library (Python 3, no dependencies). Run the tests with `python3 run_tests.py`.\n\nCalling `interleave_evenly` with an empty list of iterables crashes.\n\n```python\nimport more_itertools as mi\nlist(mi.interleave_evenly([]))\nlist(mi.interleave_evenly([], lengths=[]))\n```\n\nEXPECTED: both return `[]` (nothing to interleave, so an empty result, like `interleave` and `interleave_longest` give for no input).\n\nACTUAL: both raise `IndexError: list index out of range`.\n\nNon-empty inputs already work and must keep working.",
+  "acceptance": [
+    "list(interleave_evenly([])) == []",
+    "list(interleave_evenly([], lengths=[])) == []",
+    "Existing interleave_evenly behavior for non-empty inputs is unchanged"
+  ],
+  "verify_cmd": "python3 run_tests.py",
+  "source": "https://github.com/more-itertools/more-itertools/commit/f51a53bfd2fe9504063a33ef5f4a73e30d82d0e2",
+  "curation": {
+    "state": "pool",
+    "source": "more-itertools"
+  }
+}

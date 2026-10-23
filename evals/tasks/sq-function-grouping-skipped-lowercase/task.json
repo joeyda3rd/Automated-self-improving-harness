@@ -9,7 +9,7 @@
   "verify_cmd": "PYTHONPATH=. python3 -m pytest -q -p no:cacheprovider tests",
   "source": "https://github.com/andialbrecht/sqlparse/commit/111b35cffcfe44b16fbdd27507f165bafd52a2a1",
   "curation": {
-    "state": "reported",
+    "state": "pool",
     "source": "sqlparse"
   }
 }

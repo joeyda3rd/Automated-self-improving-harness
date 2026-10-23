@@ -8,8 +8,11 @@
   "verify_cmd": "PYTHONPATH=. python3 -m pytest -q -p no:cacheprovider tests",
   "source": "https://github.com/andialbrecht/sqlparse/commit/111b35cffcfe44b16fbdd27507f165bafd52a2a1",
   "curation": {
-    "state": "reported",
+    "state": "audited",
     "source": "sqlparse",
-    "narrow_of": "sq-function-grouping-skipped-lowercase"
+    "narrow_of": "sq-function-grouping-skipped-lowercase",
+    "screen_rate": 1.0,
+    "screen_label": "screen-20261023-033148",
+    "verdict": "passing"
   }
 }
