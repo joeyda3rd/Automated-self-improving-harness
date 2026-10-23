@@ -176,6 +176,22 @@ class IntegrityTests(unittest.TestCase):
         self.assertFalse(integrity.allowed_by({"title": "Fix login", "spec": "make the tests pass"}))
 
 
+class GitopsTests(unittest.TestCase):
+    def test_commits_skip_build_artifacts(self):
+        repo = tempfile.mkdtemp()
+        gitops.ensure_repo(repo)
+        for f in ("app.py", "pkg/__pycache__/app.cpython-313.pyc", "node_modules/x/index.js", "mod.pyc"):
+            os.makedirs(os.path.dirname(os.path.join(repo, f)) or repo, exist_ok=True)
+            with open(os.path.join(repo, f), "w") as fh:
+                fh.write("x")
+        gitops.commit_all(repo, "work")
+        self.assertEqual(gitops.git(repo, "ls-files").split(), ["app.py"])
+        with open(os.path.join(repo, "pkg/__pycache__/other.pyc"), "w") as fh:
+            fh.write("y")
+        self.assertFalse(gitops.commit_all(repo, "only artefacts changed"))
+        shutil.rmtree(repo, ignore_errors=True)
+
+
 class RatchetTests(unittest.TestCase):
     @staticmethod
     def suite(**tasks):

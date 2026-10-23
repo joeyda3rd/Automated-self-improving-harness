@@ -54,11 +54,18 @@ def remove_worktree(repo, path, branch=None):
         git(repo, "branch", "-D", branch, check=False)
 
 
+# Build artefacts never belong in a commit, even in projects without a .gitignore.
+ARTIFACTS = ["__pycache__", "*.pyc", "*.pyo", ".pytest_cache", ".mypy_cache", ".ruff_cache", "node_modules",
+             ".venv", "venv", "*.egg-info", ".tox", ".coverage", "htmlcov", ".DS_Store"]
+DEFAULT_GITIGNORE = "\n".join(ARTIFACTS + ["dist/", "build/"]) + "\n"
+
+
 def commit_all(path, message):
-    """Commit everything in the worktree. Returns False when there was nothing to commit."""
-    git(path, "add", "-A")
-    if not git(path, "status", "--porcelain"):
-        return False
+    """Commit everything in the worktree except build artefacts. Returns False when nothing to commit."""
+    git(path, "add", "-A", "--", ".", *[f":(exclude,glob)**/{a}" for a in ARTIFACTS],
+        *[f":(exclude,glob)**/{a}/**" for a in ARTIFACTS if "*" not in a])
+    if not git(path, "diff", "--cached", "--name-only"):
+        return False  # nothing staged (possibly only artefacts changed)
     git(path, "-c", "user.name=ASH", "-c", "user.email=ash@localhost", "commit", "-q", "-m", message)
     return True
 

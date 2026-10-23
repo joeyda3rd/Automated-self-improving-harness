@@ -93,6 +93,10 @@ def init_project(project, verify_cmd=None, base_branch=None):
     branch = base_branch or gitops.current_branch(project.root)
     for d in (project.tasks_dir, project.inbox, project.worktrees):
         os.makedirs(d, exist_ok=True)
+    top = os.path.join(project.root, ".gitignore")
+    if not os.path.exists(top):  # keep build artefacts out of the project's history
+        with open(top, "w") as fh:
+            fh.write(gitops.DEFAULT_GITIGNORE)
     gi = os.path.join(project.ash, ".gitignore")
     if not os.path.exists(gi):
         with open(gi, "w") as fh:
