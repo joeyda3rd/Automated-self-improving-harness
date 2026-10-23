@@ -82,7 +82,7 @@ Docs: [hooks](https://code.claude.com/docs/en/hooks.md), [headless](https://code
      Until such evals exist, the ratchet can still optimise **cost and turns**: 16 tasks give the paired cost rule enough breadth.
 
    **Third measurement: real bugs, 2026-10-21.**
-   - **Setup:** 9 evals built from real Python-Markdown fix commits (2025–2026) with `tests/make_git_eval.py`.
+   - **Setup:** 9 evals built from real Python-Markdown fix commits (2025–2026) with `tests/make_git_eval.py` (since replaced by `ash curate make`).
      - Seed: the parent commit, pinned by `seed.git.json`, with no git history.
      - Task: a user-style bug report with real actual-vs-expected output.
      - Hidden check: the fix's own tests plus the full test suite of about 1,100 tests.

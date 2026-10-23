@@ -159,6 +159,12 @@ class Daemon:
                     did = f"error: {exc!r}"
                 self.state["iterations"] += 1
                 self.beat(phase="running", last=did)
+                if self.project:  # keep .ash/status.json current for the console mod and `ash status`
+                    try:
+                        engine.write_status(self.h, self.project, "idle" if did == "idle" else "running",
+                                            note=f"daemon: {did}")
+                    except Exception:
+                        pass
                 print(f"[ash daemon {time.strftime('%H:%M:%S')}] {did}", flush=True)
                 if did.startswith("halted"):
                     break

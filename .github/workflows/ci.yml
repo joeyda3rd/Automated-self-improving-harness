@@ -1,0 +1,28 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.9", "3.11", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Configure git (tests create repositories and commits)
+        run: |
+          git config --global user.name "ci"
+          git config --global user.email "ci@example.com"
+      - name: Unit and end-to-end tests (offline, fake claude binary)
+        run: python -m unittest discover -s tests -v
+      - name: CLI smoke test
+        run: |
+          bin/ash --help
+          bin/ash doctor || true   # no claude CLI on CI runners: reported, not fatal here

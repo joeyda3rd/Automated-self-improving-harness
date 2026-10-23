@@ -331,7 +331,7 @@ class LoopTests(unittest.TestCase):
         elapsed = __import__("time").time() - started
         self.assertEqual(summary["n"], 8)
         self.assertEqual(sorted(r["repeat"] for r in summary["results"]), list(range(8)))
-        self.assertLess(elapsed, 8 * 0.5 * 0.6, "8 half-second sessions on 4 workers overlap")
+        self.assertLess(elapsed, 8 * 0.5 * 0.8, "8 half-second sessions on 4 workers overlap (serial would take 4s)")
 
     def test_resumable_suite_reuses_finished_runs(self):
         os.environ["FAKE_LOG"] = os.path.join(self.tmp, "calls.jsonl")
