@@ -204,3 +204,9 @@ Three more cycles ran on the high-effort baseline; all were rejected:
 - **New rule:** with noise-aware acceptance in place, the evals with mixed history are exactly `md-unterminated-html-narrow` and `sq-splitter-nesting-narrow`.
 - **Reversal:** both "wins" that justified adopting `high` builder effort were on those two evals. Under the better rule, high effort shows no measurable gain at 14% more cost, so builders are back on `medium`. That is the cached baseline, and later evidence can bring `high` back.
 - **Archive:** rejected candidates are now archived, so the one change that ever moved a stuck eval (the improver's `before-after` tool, cycle 3 of §9) can be re-tested instead of being lost.
+
+**Re-test of the archived `before-after` candidate** (medium effort, noise-aware rule): **rejected**, with identical results on every non-noisy eval. `sq-begin-transaction-narrow` stayed 0/2, so its earlier single pass did not replicate. The noisy `md-unterminated-html-narrow` dropped 0.5 → 0 and, as intended, no longer decided the outcome.
+
+**Net result of the harness's own improvement loop so far: zero.** Ten proposals were benchmarked (prose, a tool, and effort), and none survived a fair, noise-aware comparison. The weakness the gate measures (inferring unstated variants of a reported bug) has not responded to instructions, tools that diff outputs, or more thinking.
+
+**The real bottleneck is the eval pipeline.** It is still run by hand: mining, writing reports, validating, screening and auditing for fairness. Until the harness does that itself, its improvement stops when its operator does. That is the next piece of work.
