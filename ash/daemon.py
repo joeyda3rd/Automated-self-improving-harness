@@ -76,7 +76,9 @@ class Daemon:
         self.stopping = False
         self._beat_lock = threading.Lock()
         self.state = {"pid": os.getpid(), "started": time.time(), "phase": "starting",
-                      "project": project.root if project else None, "iterations": 0, "last": None}
+                      "project": project.root if project else None, "iterations": 0, "last": None,
+                      # survives restarts, so a restarted daemon does not repeat a recent curation pass
+                      "last_curated": status(harness).get("last_curated", 0)}
 
     def beat(self, **fields):
         with self._beat_lock:  # the heartbeat thread and the loop both write daemon.json

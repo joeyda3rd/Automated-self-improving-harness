@@ -521,6 +521,8 @@ class LoopTests(unittest.TestCase):
         d = daemon.Daemon(self.harness, None, idle_sleep=0)
         self.assertTrue(d.step().startswith("curated"))
         self.assertFalse(d.curation_due(), "no second curation pass until the interval has passed")
+        self.assertFalse(daemon.Daemon(self.harness, None, idle_sleep=0).curation_due(),
+                         "a restarted daemon remembers the last curation pass")
 
     def test_curation_drops_unfair_narrow_variants(self):
         from ash import curate
