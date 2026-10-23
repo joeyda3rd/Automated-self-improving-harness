@@ -232,3 +232,22 @@ That is below `min_gate_discriminating` (8), so with budget the daemon would now
 **Result:** planned into 3 tasks, all merged first try, **$0.96 in total** (plan $0.34, then $0.17–0.23 per task). An independent probe site confirmed every requirement, including the defaults staying unchanged.
 
 **Bug found and fixed:** the project history had 21 committed `__pycache__/*.pyc` files (`git add -A` in a project without a `.gitignore`). The harness now excludes build artefacts from every commit and writes a default `.gitignore` for new projects.
+
+## 13. The daemon on its own: the final $34 (2026-10-23)
+
+With a $34 ceiling, the supervisor ran unattended, attached to the sitegen project with an empty queue, through several container restarts:
+
+- **Curation pass ($3.38):** mined, built, reported and screened new evals from Markdown, more-itertools and packaging, then committed them itself. All 7 new narrow variants passed, so the gate kept its 4 discriminating evals.
+- **Improvement cycles:** 7 more proposals.
+  - **1 accepted, the first change adopted with no human involved:** the improver trimmed the `build-task` procedure, giving identical results on all 8 gate evals with cost per run $0.193 → $0.172 (−11%, cheaper on 6 of 8).
+  - **6 rejected:** five showed no measurable gain, and one failed the smoke stage after breaking a canary.
+- **Stop:** the daemon stopped itself at the $5 floor.
+
+**Bugs found along the way, all fixed:**
+- the daemon idled instead of improving when a project with an empty queue was attached;
+- canaries accumulated (4 → 8);
+- a restarted daemon forgot its last curation pass;
+- harness commits used a hardcoded, unverified git identity;
+- build artefacts were committed into projects.
+
+**Lifetime totals:** 17 benchmarked self-improvement proposals with 1 accepted (the cost cut), 111 evals, and $124.52 of harness spend.
