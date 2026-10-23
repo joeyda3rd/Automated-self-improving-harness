@@ -1,0 +1,14 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "[ -n \"$ASH_ROLE\" ] || \"$CLAUDE_PROJECT_DIR/bin/ash\" daemon --ensure --if-enabled >/dev/null 2>&1 || true"
+          }
+        ]
+      }
+    ]
+  }
+}

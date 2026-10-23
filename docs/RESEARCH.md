@@ -198,3 +198,9 @@ Three more cycles ran on the high-effort baseline; all were rejected:
 | Rejected | 8, including 7 prose changes and 1 tool. Nothing that failed the ratchet was merged, and no kernel file was ever touched by the improver |
 | Kernel bugs found by evidence | Stop gate bypassed under `--json-schema`; tool errors never recorded; inherited session id and effort; Pygments breaking evals; a system-wide `packaging` shadowing the code under test; budget not covering evals |
 | Total spend | about $91 of the $100 budget |
+
+## 10. Noise-aware acceptance, and an honest reversal (2026-10-23)
+
+- **New rule:** with noise-aware acceptance in place, the evals with mixed history are exactly `md-unterminated-html-narrow` and `sq-splitter-nesting-narrow`.
+- **Reversal:** both "wins" that justified adopting `high` builder effort were on those two evals. Under the better rule, high effort shows no measurable gain at 14% more cost, so builders are back on `medium`. That is the cached baseline, and later evidence can bring `high` back.
+- **Archive:** rejected candidates are now archived, so the one change that ever moved a stuck eval (the improver's `before-after` tool, cycle 3 of §9) can be re-tested instead of being lost.

@@ -22,7 +22,7 @@ import time
 
 from . import gitops
 from .claude import BUILD_SCHEMA, BudgetExceeded, run_session
-from .config import append_jsonl, load_json, save_json
+from .config import append_jsonl, load_json, read_jsonl, save_json
 from .tasks import card
 
 
@@ -185,7 +185,22 @@ def regressions(baseline, candidate):
                   if name in baseline["per_task"] and c["rate"] < baseline["per_task"][name]["rate"])
 
 
-def better(baseline, candidate, min_cost_gain=0.05):
+def noisy_evals(harness, low=0.15, high=0.85, min_runs=4):
+    """Evals whose recorded outcomes are mixed: a swing on them is more likely noise than effect.
+
+    Measured from every benchmark run in state/eval_runs.jsonl. An eval that always fails or always
+    passes is informative at 2 runs; one that passes 40% of the time is not.
+    """
+    tally = {}
+    for summary in read_jsonl(os.path.join(harness.state, "eval_runs.jsonl")):
+        for r in summary.get("results", []):
+            t = tally.setdefault(r["eval"], [0, 0])
+            t[0] += 1
+            t[1] += bool(r.get("passed"))
+    return {name for name, (n, p) in tally.items() if n >= min_runs and low < p / n < high}
+
+
+def better(baseline, candidate, min_cost_gain=0.05, noisy=(), noise_margin=0.75):
     """The ratchet, paired per task. Returns (accepted, reason).
 
     LLM runs are noisy and a pooled pass rate hides which tasks moved, so the
@@ -201,6 +216,8 @@ def better(baseline, candidate, min_cost_gain=0.05):
     if not shared:
         return False, "no evals ran"
     delta = {n: candidate["per_task"][n]["rate"] - baseline["per_task"][n]["rate"] for n in shared}
+    # a swing on a noisy eval only counts when it is larger than its usual noise
+    delta = {n: (0.0 if n in noisy and abs(d) < noise_margin else d) for n, d in delta.items()}
     wins = [n for n, d in delta.items() if d > 0]
     losses = [n for n, d in delta.items() if d < 0]
     if len(wins) > len(losses) and sum(delta.values()) > 0:

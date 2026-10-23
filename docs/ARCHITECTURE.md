@@ -88,6 +88,19 @@ Triggered every `improve_every` builds, or by hand with `ash improve`.
 
 `ash report` prints success rate, cost and turns grouped by harness commit. That table is the learning curve.
 
+## The supervisor (`ash daemon`)
+
+Long jobs used to run as loose shell scripts. Container restarts left stale entries behind, and nothing could tell a live loop from a dead one. Now one supervisor drives everything:
+- **Single instance:** an exclusive `flock` on `state/daemon.lock`. The kernel releases it when the process dies, so a crash or a container restart never leaves a lock that looks alive.
+- **Heartbeat:** written to `state/daemon.json` every 30 s, with the current phase and the last step. `ash status` shows it.
+- **Each iteration:** build one ready task, else run an improvement cycle when one is due and `min_cycle_budget_usd` remains, else sleep. `STOP`, `PAUSED` and a budget shortfall halt it. `SIGTERM` (sent by `ash daemon stop`) lets the current step finish.
+- **Auto-resume (opt-in):** `ash [-C project] daemon enable`. This repo's `.claude/settings.json` has a SessionStart hook that runs `ash daemon --ensure --if-enabled`, which is a no-op inside ASH's own sessions or when a daemon is alive. Interrupted baselines resume from saved runs, so restarting costs only the runs in flight.
+
+## Candidate archive and noise
+
+- **Archive:** a candidate that was benchmarked and rejected is kept as `state/archive/<id>.patch`. `ash improve --list` shows them. `ash improve --retry <id>` re-applies one and benchmarks it again without paying for a new proposal. Near misses are not lost to one noisy measurement.
+- **Noise-aware ratchet:** an eval whose recorded outcomes are mixed (at least 4 runs, pass rate between 15% and 85%) is *noisy*. Its swings only count toward a decision when they reach `0.75`, which at 2 runs means a full flip. Evals that reliably fail or reliably pass keep full weight.
+
 ## Safety and failure containment
 
 - **Kill switches**: `ash pause` (writes `state/STOP`, so the loop stops after the current task); a circuit breaker after `max_consecutive_failures` writes `state/PAUSED` and refuses to restart until `ash resume`.

@@ -57,6 +57,13 @@ def cmd_status(h, args):
         if os.path.exists(path):
             with open(path) as fh:
                 print(f"harness {flag}: {fh.read().strip()}")
+    from . import daemon
+    d = daemon.status(h)
+    if d["alive"]:
+        print(f"daemon: running (pid {d.get('pid')}, {d.get('phase')}, heartbeat {d.get('heartbeat_age_s', '?')}s ago, "
+              f"last: {d.get('last')})")
+    else:
+        print(f"daemon: not running (auto-start {'on' if d['enabled'] else 'off'}; last seen {d.get('phase', 'never')})")
 
 
 def cmd_report(h, args):
@@ -78,7 +85,43 @@ def cmd_report(h, args):
 
 
 def cmd_improve(h, args):
-    improve.cycle(h)
+    if args.list:
+        for f in sorted(os.listdir(improve.archive_dir(h))) if os.path.isdir(improve.archive_dir(h)) else []:
+            if f.endswith(".json"):
+                meta = json.load(open(os.path.join(improve.archive_dir(h), f)))
+                print(f"{f[:-5]}  {meta.get('change_summary', '')[:70]}  [{meta.get('reason')}]")
+        return 0
+    improve.cycle(h, retry=args.retry)
+
+
+def cmd_daemon(h, args):
+    from . import daemon
+    root = os.path.abspath(args.project)
+    project_root = root if os.path.exists(os.path.join(root, ".ash", "project.json")) else None
+    if args.action == "enable":
+        with open(daemon.paths(h)[2], "w") as fh:
+            fh.write(project_root or "")
+        print(f"auto-start enabled{' for ' + project_root if project_root else ''}: "
+              "the SessionStart hook keeps a daemon running")
+    elif args.action == "disable":
+        if os.path.exists(daemon.paths(h)[2]):
+            os.remove(daemon.paths(h)[2])
+        print("auto-start disabled")
+    elif args.action == "stop":
+        print(daemon.request_stop(h))
+    elif args.action == "status":
+        print(json.dumps(daemon.status(h), indent=2))
+    elif args.ensure:
+        enabled = daemon.paths(h)[2]
+        if args.if_enabled and not os.path.exists(enabled):
+            return 0
+        if not project_root and os.path.exists(enabled):
+            with open(enabled) as fh:
+                project_root = fh.read().strip() or None  # the project recorded by `daemon enable`
+        print(daemon.ensure(h, project_root))
+    else:
+        return daemon.Daemon(h, Project(project_root) if project_root else None,
+                             max_iterations=args.max_iterations).run()
 
 
 def cmd_eval(h, args):
@@ -144,11 +187,22 @@ def parser():
 
     for name, fn, text in [("status", cmd_status, "show the queue"),
                            ("report", cmd_report, "success and cost per harness version"),
-                           ("improve", cmd_improve, "run one self-improvement cycle now"),
                            ("lessons", cmd_lessons, "show what the harness has learned"),
                            ("pause", cmd_pause, "stop the loop after the current task"),
                            ("resume", cmd_resume, "clear a pause or circuit-breaker trip")]:
         sub.add_parser(name, help=text).set_defaults(fn=fn)
+
+    s = sub.add_parser("daemon", help="the supervisor: build queued work and self-improve, single instance")
+    s.add_argument("action", nargs="?", choices=["enable", "disable", "stop", "status"])
+    s.add_argument("--ensure", action="store_true", help="start in the background unless already running")
+    s.add_argument("--if-enabled", action="store_true", help="with --ensure: only if auto-start is enabled")
+    s.add_argument("--max-iterations", type=int)
+    s.set_defaults(fn=cmd_daemon)
+
+    s = sub.add_parser("improve", help="run one self-improvement cycle now")
+    s.add_argument("--retry", metavar="ID", help="re-benchmark an archived candidate instead of proposing a new one")
+    s.add_argument("--list", action="store_true", help="list archived candidates")
+    s.set_defaults(fn=cmd_improve)
 
     s = sub.add_parser("eval", help="benchmark the harness (or a candidate plugin dir)")
     s.add_argument("--plugin-dir")

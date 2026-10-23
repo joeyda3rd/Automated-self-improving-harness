@@ -4,6 +4,7 @@
   -> benchmark candidate vs baseline -> merge (accepted) or discard (rejected) -> log
 """
 import os
+import subprocess
 import time
 from collections import Counter
 
@@ -95,7 +96,13 @@ def baseline(harness, commit):
     return cache[key]
 
 
-def cycle(harness):
+def archive_dir(harness):
+    return os.path.join(harness.state, "archive")
+
+
+def cycle(harness, retry=None):
+    """One improvement attempt: the improver proposes a change, or with `retry` an archived
+    candidate patch is re-applied (no new proposal session) and benchmarked again."""
     """Run one improvement attempt. Returns the logged decision record (or None if skipped)."""
     if not evals.gate_set(harness):
         log("no evals in evals/tasks; skipping (self-improvement needs a benchmark)")
@@ -125,13 +132,20 @@ def cycle(harness):
     gitops.add_worktree(harness.home, wt, branch, base_commit)
     record = {"ts": time.time(), "base_commit": base_commit[:12], "run_dir": run_dir, "accepted": False}
     try:
-        res = run_session(harness, role="improver", cwd=wt, run_dir=run_dir, schema=IMPROVE_SCHEMA,
-                          prompt=("Use the ash:improve-harness skill. The current directory is a worktree of the "
-                                  f"harness. Evidence: {evidence_path}"),
-                          budget_usd=harness.get("improve_budget_usd", 5.0),
-                          extra_env={"ASH_WRITE_ROOTS": ":".join(mutable)})
-        record.update({k: res.output.get(k, "") for k in ("hypothesis", "change_summary", "expected_effect")})
-        record["cost_usd"] = res.cost_usd
+        if retry:
+            meta = load_json(os.path.join(archive_dir(harness), f"{retry}.json"), {}) or {}
+            subprocess.run(["git", "apply", "--whitespace=nowarn", os.path.join(archive_dir(harness), f"{retry}.patch")],
+                           cwd=wt, check=True, capture_output=True)
+            record.update({k: meta.get(k, "") for k in ("hypothesis", "change_summary", "expected_effect")})
+            record.update({"retry_of": retry, "cost_usd": 0.0})
+        else:
+            res = run_session(harness, role="improver", cwd=wt, run_dir=run_dir, schema=IMPROVE_SCHEMA,
+                              prompt=("Use the ash:improve-harness skill. The current directory is a worktree of the "
+                                      f"harness. Evidence: {evidence_path}"),
+                              budget_usd=harness.get("improve_budget_usd", 5.0),
+                              extra_env={"ASH_WRITE_ROOTS": ":".join(mutable)})
+            record.update({k: res.output.get(k, "") for k in ("hypothesis", "change_summary", "expected_effect")})
+            record["cost_usd"] = res.cost_usd
         changed = gitops.changed_files(wt, base_commit)
         record["changed"] = changed
         illegal = [f for f in changed if not any(f.startswith(m) for m in mutable)]
@@ -152,7 +166,9 @@ def cycle(harness):
                 rest = evals.run_suite(harness, candidate_plugin, f"candidate-{stamp}",
                                        names=evals.gate_set(harness) - smoke, repeats=gate_repeats(harness))
                 cand = evals.summarize(f"candidate-{stamp}", (early["results"] if early else []) + rest["results"])
-                accepted, reason = evals.better(base, cand, harness.get("improve_min_cost_gain", 0.05))
+                noisy = evals.noisy_evals(harness)
+                record["noisy"] = sorted(noisy & set(cand["per_task"]))
+                accepted, reason = evals.better(base, cand, harness.get("improve_min_cost_gain", 0.05), noisy=noisy)
             record.update({"accepted": accepted, "reason": reason,
                            "baseline": {k: base[k] for k in ("pass_rate", "cost_usd", "turns", "per_task")},
                            "candidate": {k: cand[k] for k in ("pass_rate", "cost_usd", "turns", "per_task")}})
@@ -166,6 +182,17 @@ def cycle(harness):
                     save_json(cache_path, cache)
                 else:
                     record.update({"accepted": False, "reason": reason + "; but merging into the harness failed"})
+        if not record["accepted"] and record.get("changed") and "candidate" in record:
+            # keep a benchmarked-but-rejected candidate so it can be re-tested (`ash improve --retry`)
+            gitops.git(wt, "add", "-A")
+            patch = gitops.git(wt, "diff", "--cached", base_commit)
+            os.makedirs(archive_dir(harness), exist_ok=True)
+            with open(os.path.join(archive_dir(harness), f"{stamp}.patch"), "w") as fh:
+                fh.write(patch + "\n")
+            save_json(os.path.join(archive_dir(harness), f"{stamp}.json"),
+                      {k: record.get(k) for k in ("hypothesis", "change_summary", "expected_effect", "changed",
+                                                  "reason", "baseline", "candidate", "base_commit")})
+            record["archived"] = stamp
     finally:
         gitops.remove_worktree(harness.home, wt, branch)
     append_jsonl(harness.improvements, record)

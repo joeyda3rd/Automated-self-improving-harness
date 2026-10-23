@@ -36,6 +36,15 @@ ash eval                                 # benchmark the current harness
 ash pause / ash resume                   # stop after the current task / clear the circuit breaker
 ```
 
+To keep it running unattended, use the supervisor. It is single-instance, has a heartbeat, and resumes after restarts:
+
+```bash
+ash -C ~/code/myapp daemon            # foreground: build queued tasks, self-improve when idle and affordable
+ash -C ~/code/myapp daemon enable     # auto-start: Claude sessions in this repo keep one daemon alive
+ash status                            # ...shows "daemon: running (pid, phase, heartbeat)" or "not running"
+ash daemon stop                       # stop after the current step
+```
+
 To watch the loop from inside Claude Code, load the console mod in a session opened in the project: `claude --plugin-dir mods/harness-console`, then `/ash` opens a live pane. The status line shows the queue at a glance.
 
 ## Layout

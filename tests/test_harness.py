@@ -10,7 +10,7 @@ import unittest
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
-from ash import claude, engine, evals, gitops, improve, integrity, memory  # noqa: E402
+from ash import claude, daemon, engine, evals, gitops, improve, integrity, memory  # noqa: E402
 from ash.config import Harness, Project, append_jsonl, read_jsonl, save_json  # noqa: E402
 from ash.tasks import TaskStore  # noqa: E402
 
@@ -192,6 +192,14 @@ class RatchetTests(unittest.TestCase):
         self.assertFalse(evals.better(base, swap)[0])
         self.assertEqual(evals.regressions(base, swap), ["a"])
 
+    def test_noisy_evals_need_a_full_flip(self):
+        base = self.suite(stuck=[(0, .2), (0, .2)], flaky=[(1, .2), (0, .2)], ok=[(1, .2), (1, .2)])
+        cand = self.suite(stuck=[(1, .2), (0, .2)], flaky=[(0, .2), (0, .2)], ok=[(1, .2), (1, .2)])
+        self.assertFalse(evals.better(base, cand)[0], "without noise awareness this is a 1-1 tie")
+        self.assertTrue(evals.better(base, cand, noisy={"flaky"})[0])
+        crash = self.suite(stuck=[(1, .2), (0, .2)], flaky=[(0, .2), (0, .2)], ok=[(0, .2), (0, .2)])
+        self.assertFalse(evals.better(base, crash, noisy={"flaky"})[0], "real regressions still count")
+
     def test_cost_wins_need_breadth(self):
         base = self.suite(a=[(1, .30)], b=[(1, .30)], c=[(1, .30)])
         broad = self.suite(a=[(1, .25)], b=[(1, .26)], c=[(1, .31)])
@@ -228,7 +236,7 @@ class LoopTests(unittest.TestCase):
         engine.init_project(self.project)
 
     def tearDown(self):
-        for k in ("ASH_CLAUDE_BIN", "FAKE_LAZY_FIRST", "FAKE_TOUCH_KERNEL", "FAKE_FOLLOWUP", "FAKE_LOG", "FAKE_VERDICT", "FAKE_SLEEP"):
+        for k in ("ASH_CLAUDE_BIN", "FAKE_LAZY_FIRST", "FAKE_TOUCH_KERNEL", "FAKE_FOLLOWUP", "FAKE_LOG", "FAKE_VERDICT", "FAKE_SLEEP", "FAKE_IMPROVER_TEXT"):
             os.environ.pop(k, None)
         shutil.rmtree(self.tmp, ignore_errors=True)
 
@@ -308,6 +316,20 @@ class LoopTests(unittest.TestCase):
         summary = evals.run_suite(self.harness, self.harness.plugin_dir, "cap", repeats=12)
         self.assertTrue(summary["incomplete"])
         self.assertLessEqual(engine.spent(self.harness), start + 0.05 + 1e-9)
+
+    def test_rejected_candidates_are_archived_and_retryable(self):
+        os.environ["FAKE_IMPROVER_TEXT"] = "\nA change that does not help.\n"
+        os.environ["FAKE_LOG"] = os.path.join(self.tmp, "calls.jsonl")
+        first = improve.cycle(self.harness)
+        self.assertFalse(first["accepted"])
+        patch = os.path.join(improve.archive_dir(self.harness), first["archived"] + ".patch")
+        self.assertIn("does not help", read(patch))
+        improvers = lambda: [c for c in read_jsonl(os.environ["FAKE_LOG"]) if c["role"] == "improver"]
+        before = len(improvers())
+        again = improve.cycle(self.harness, retry=first["archived"])
+        self.assertEqual(again["retry_of"], first["archived"])
+        self.assertEqual(again["changed"], ["plugin/skills/build-task/SKILL.md"])
+        self.assertEqual(len(improvers()), before, "a retry does not pay for a new proposal")
 
     def test_improvement_touching_kernel_is_rejected(self):
         os.environ["FAKE_TOUCH_KERNEL"] = "1"
@@ -391,6 +413,33 @@ class LoopTests(unittest.TestCase):
         self.project.set_config(verify_cmd="ls feature_*.txt")
         engine.run_task(self.harness, self.project, TaskStore(self.project).add("clean task", "x"))
         self.assertFalse([r for r in read_jsonl(self.harness.metrics) if r.get("kind") == "retro"])
+
+    def test_daemon_is_single_instance(self):
+        held = daemon.acquire(self.harness)
+        self.assertIsNotNone(held)
+        self.assertIsNone(daemon.acquire(self.harness), "a second daemon cannot take the lock")
+        self.assertTrue(daemon.status(self.harness)["alive"])
+        self.assertEqual(daemon.ensure(self.harness), "already running")
+        held.close()  # what the kernel does when the process dies
+        self.assertFalse(daemon.status(self.harness)["alive"])
+
+    def test_daemon_builds_then_improves_then_halts(self):
+        self.project.set_config(verify_cmd="ls feature_*.txt")
+        TaskStore(self.project).add("a feature", "x")
+        d = daemon.Daemon(self.harness, self.project, max_iterations=2, idle_sleep=0)
+        self.assertEqual(d.step(), "built")
+        self.harness.cfg["improve_every"] = 1
+        self.assertEqual(d.step(), "improved")
+        self.assertEqual(len(read_jsonl(self.harness.improvements)), 1)
+        open(os.path.join(self.harness.state, "STOP"), "w").close()
+        self.assertEqual(daemon.Daemon(self.harness, self.project, max_iterations=5, idle_sleep=0).run(), 0)
+        info = daemon.status(self.harness)
+        self.assertFalse(info["alive"])
+        self.assertEqual((info["phase"], info["last"]), ("stopped", "halted:STOP"))
+
+    def test_daemon_skips_improvement_without_budget_for_a_cycle(self):
+        self.harness.cfg.update({"budget_usd_total": engine.spent(self.harness) + 1.0, "min_cycle_budget_usd": 12})
+        self.assertEqual(daemon.Daemon(self.harness, None, idle_sleep=0).step(), "idle")
 
     def test_inbox_intake(self):
         with open(os.path.join(self.project.inbox, "feature.md"), "w") as fh:

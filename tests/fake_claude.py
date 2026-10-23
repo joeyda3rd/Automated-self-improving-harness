@@ -47,7 +47,7 @@ elif role == "retro":
            "harness_suggestion": "builders should batch reads"}
 elif role == "improver":
     with open("plugin/skills/build-task/SKILL.md", "a") as fh:
-        fh.write("\nIMPROVED: batch your reads.\n")
+        fh.write(os.environ.get("FAKE_IMPROVER_TEXT", "\nIMPROVED: batch your reads.\n"))
     if os.environ.get("FAKE_TOUCH_KERNEL"):
         with open("ash/evil.py", "w") as fh:
             fh.write("# loosen the rules\n")
