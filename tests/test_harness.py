@@ -177,6 +177,24 @@ class IntegrityTests(unittest.TestCase):
 
 
 class GitopsTests(unittest.TestCase):
+    def test_commits_use_the_repos_configured_identity(self):
+        repo = tempfile.mkdtemp()
+        empty = os.path.join(repo, "..", os.path.basename(repo) + ".gitconfig")
+        open(empty, "w").close()
+        old = os.environ.get("GIT_CONFIG_GLOBAL")
+        os.environ["GIT_CONFIG_GLOBAL"] = empty  # no global identity, whatever this machine has
+        self.addCleanup(lambda: os.environ.pop("GIT_CONFIG_GLOBAL") if old is None
+                        else os.environ.__setitem__("GIT_CONFIG_GLOBAL", old))
+        gitops.ensure_repo(repo)
+        self.assertEqual(gitops.git(repo, "log", "-1", "--format=%ae"), "ash@localhost", "fallback identity")
+        gitops.git(repo, "config", "user.email", "dev@example.com")
+        gitops.git(repo, "config", "user.name", "Dev")
+        with open(os.path.join(repo, "a.txt"), "w") as fh:
+            fh.write("a")
+        gitops.commit_all(repo, "work")
+        self.assertEqual(gitops.git(repo, "log", "-1", "--format=%ae"), "dev@example.com")
+        shutil.rmtree(repo, ignore_errors=True)
+
     def test_commits_skip_build_artifacts(self):
         repo = tempfile.mkdtemp()
         gitops.ensure_repo(repo)

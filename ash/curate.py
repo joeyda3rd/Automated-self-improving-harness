@@ -432,7 +432,7 @@ def grow(harness, per_source=None):
     if gitops.is_repo(harness.home):  # the benchmark is versioned: commit what curation added or removed
         gitops.git(harness.home, "add", "-A", "evals")
         if gitops.git(harness.home, "diff", "--cached", "--name-only", "--", "evals"):
-            gitops.git(harness.home, "-c", "user.name=ASH", "-c", "user.email=ash@localhost", "commit", "-q",
+            gitops.git(harness.home, *gitops.identity(harness.home), "commit", "-q",
                        "-m", f"ASH curation: gate now {len(gate['gate'])} discriminating + {len(gate['smoke'])} smoke",
                        "--", "evals")
     return gate

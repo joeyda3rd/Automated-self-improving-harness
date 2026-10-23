@@ -15,6 +15,15 @@ def git(cwd, *args, check=True):
     return proc.stdout.strip()
 
 
+def identity(path):
+    """git -c arguments for committing: the repository's own identity when one is configured
+    (so commits in the user's repo are attributed and verifiable), else a fallback ASH identity."""
+    configured = subprocess.run(["git", "config", "user.email"], cwd=path, capture_output=True, text=True)
+    if configured.returncode == 0 and configured.stdout.strip():
+        return []
+    return ["-c", "user.name=ASH", "-c", "user.email=ash@localhost"]
+
+
 def is_repo(path):
     return subprocess.run(["git", "rev-parse", "--git-dir"], cwd=path,
                           capture_output=True).returncode == 0
@@ -27,8 +36,7 @@ def ensure_repo(path, base_branch="main"):
         git(path, "init", "-q", "-b", base_branch)
     if not git(path, "rev-parse", "--verify", "-q", "HEAD", check=False):
         git(path, "add", "-A")
-        git(path, "-c", "user.name=ASH", "-c", "user.email=ash@localhost",
-            "commit", "-q", "--allow-empty", "-m", "ASH: initial commit")
+        git(path, *identity(path), "commit", "-q", "--allow-empty", "-m", "ASH: initial commit")
 
 
 def current_branch(path):
@@ -66,7 +74,7 @@ def commit_all(path, message):
         *[f":(exclude,glob)**/{a}/**" for a in ARTIFACTS if "*" not in a])
     if not git(path, "diff", "--cached", "--name-only"):
         return False  # nothing staged (possibly only artefacts changed)
-    git(path, "-c", "user.name=ASH", "-c", "user.email=ash@localhost", "commit", "-q", "-m", message)
+    git(path, *identity(path), "commit", "-q", "-m", message)
     return True
 
 
@@ -79,8 +87,7 @@ def changed_files(path, base):
 
 def merge(repo, branch, message):
     """Merge `branch` into the repo's checked-out branch. Returns False (and aborts) on conflict."""
-    proc = subprocess.run(["git", "-c", "user.name=ASH", "-c", "user.email=ash@localhost",
-                           "merge", "--no-ff", "-q", "-m", message, branch],
+    proc = subprocess.run(["git", *identity(repo), "merge", "--no-ff", "-q", "-m", message, branch],
                           cwd=repo, capture_output=True, text=True)
     if proc.returncode != 0:
         git(repo, "merge", "--abort", check=False)
