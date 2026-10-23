@@ -83,8 +83,16 @@ class Daemon:
             self.state.update(fields, heartbeat=time.time())
             save_json(paths(self.h)[1], self.state)
 
+    def build_work_pending(self):
+        return bool(self.project and TaskStore(self.project).ready())
+
+    def meta_allowed(self):
+        """Building assigned software is the job. While build work is queued, self-improvement may
+        only take `meta_budget_share` of all spend; with nothing to build, idle time goes to it."""
+        return not self.build_work_pending() or claude.meta_share(self.h) < self.h.get("meta_budget_share", 0.4)
+
     def improvement_due(self):
-        if not evals.gate_set(self.h):
+        if not evals.gate_set(self.h) or not self.meta_allowed():
             return False
         left = claude.remaining(self.h)
         if left is not None and left < self.h.get("min_cycle_budget_usd", 12):
@@ -118,7 +126,7 @@ class Daemon:
 
     def curation_due(self):
         """Grow the benchmark when the gate is too small to carry signal (and it is affordable)."""
-        if not curate.sources(self.h) or not curate.needs_growth(self.h):
+        if not curate.sources(self.h) or not curate.needs_growth(self.h) or not self.meta_allowed():
             return False
         if time.time() - self.state.get("last_curated", 0) < self.h.get("curate_interval_s", 6 * 3600):
             return False  # mining may find nothing new; do not spin on it

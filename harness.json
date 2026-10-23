@@ -3,7 +3,7 @@
   "model": null,
   "permission_mode": "bypassPermissions",
   "budget_usd_per_run": 5.0,
-  "budget_usd_total": 100.0,
+  "budget_usd_total": 129.51,
   "max_attempts_per_run": 2,
   "max_runs_per_task": 3,
   "gate_max": 3,
@@ -34,5 +34,9 @@
     "default": "medium"
   },
   "min_gate_discriminating": 8,
-  "min_curate_budget_usd": 10
+  "min_curate_budget_usd": 7,
+  "min_cycle_budget_usd": 5,
+  "curate_per_source": 2,
+  "meta_budget_share": 0.4,
+  "curate_interval_s": 21600
 }

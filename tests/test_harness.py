@@ -437,6 +437,16 @@ class LoopTests(unittest.TestCase):
         self.assertFalse(info["alive"])
         self.assertEqual((info["phase"], info["last"]), ("stopped", "halted:STOP"))
 
+    def test_building_comes_first_when_meta_spend_is_high(self):
+        append_jsonl(os.path.join(self.harness.state, "spend.jsonl"), {"role": "improver", "cost_usd": 9.0})
+        append_jsonl(os.path.join(self.harness.state, "spend.jsonl"), {"role": "builder", "cost_usd": 1.0,
+                                                                       "run_dir": "/x/state/runs/T-1"})
+        self.assertGreater(claude.meta_share(self.harness), 0.4)
+        d = daemon.Daemon(self.harness, self.project, idle_sleep=0)
+        self.assertTrue(d.meta_allowed(), "with nothing to build, idle time may go to self-improvement")
+        TaskStore(self.project).add("queued work", "x")
+        self.assertFalse(d.meta_allowed(), "with build work queued, meta spend is capped")
+
     def test_daemon_skips_improvement_without_budget_for_a_cycle(self):
         self.harness.cfg.update({"budget_usd_total": engine.spent(self.harness) + 1.0, "min_cycle_budget_usd": 12})
         self.assertEqual(daemon.Daemon(self.harness, None, idle_sleep=0).step(), "idle")
@@ -469,11 +479,13 @@ class LoopTests(unittest.TestCase):
         self._upstream_with_a_bug_fix()
         self.harness.cfg.update({"retro": False})
         gate = curate.grow(self.harness, per_source=3)
-        self.assertEqual(gate["gate"], ["tl-absval-returning-negative-numbers",
-                                        "tl-absval-returning-negative-numbers-narrow"])
+        self.assertEqual(gate["gate"], ["tl-absval-returning-negative-numbers-narrow"])
         made = os.path.join(self.harness.evals_dir, "tl-absval-returning-negative-numbers")
         task = json.loads(read(os.path.join(made, "task.json")))
-        self.assertEqual((task["title"], task["curation"]["verdict"]), ("absval is wrong for negatives", "fair"))
+        self.assertEqual((task["title"], task["curation"]["state"]), ("absval is wrong for negatives", "pool"),
+                         "full reports join the pool unscreened; only narrow variants are screened")
+        narrow = json.loads(read(os.path.join(made + "-narrow", "task.json")))
+        self.assertEqual(narrow["curation"]["verdict"], "fair")
         self.assertTrue(os.path.exists(os.path.join(made, "hidden", "tests", "test_calc.py")))
         self.assertIn("ASH curation", gitops.git(self.home, "log", "-1", "--format=%s"))
         self.assertEqual(curate.mine(self.harness, "toylib"), 0, "a fix is only mined once")

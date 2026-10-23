@@ -146,6 +146,49 @@ def cmd_curate(h, args):
         print(json.dumps(curate.grow(h, per_source=args.limit), indent=2))
 
 
+def cmd_doctor(h, args):
+    """Pre-flight checks before running unattended. Exit 1 if anything would stop the harness."""
+    import shutil as _sh
+    import subprocess as _sp
+    from . import claude as _claude, daemon as _daemon, evals as _evals
+    problems, notes = [], []
+
+    def check(ok, good, bad, fatal=True):
+        (notes if ok else (problems if fatal else notes)).append(("ok   " if ok else ("FAIL " if fatal else "warn ")) + (good if ok else bad))
+
+    binary = _sh.which(h.claude_bin)
+    version = _sp.run([h.claude_bin, "--version"], capture_output=True, text=True).stdout.strip() if binary else ""
+    check(bool(version), f"claude CLI: {version}", f"claude CLI not found: {h.claude_bin}")
+    check(bool(_sh.which("git")), "git present", "git not found")
+    check(sys.version_info >= (3, 9), f"python {sys.version.split()[0]}", "python >= 3.9 required")
+    check(os.path.exists(os.path.join(h.plugin_dir, "hooks", "hooks.json")), "plugin hooks present", "plugin/hooks/hooks.json missing")
+    roles = [r for r in ("builder", "planner", "retro", "improver") if not os.path.exists(os.path.join(h.plugin_dir, "roles", f"{r}.md"))]
+    check(not roles, "role prompts present", f"missing role prompts: {roles}")
+    try:
+        probe = os.path.join(h.state, ".doctor"); open(probe, "w").close(); os.remove(probe)
+        check(True, "state/ writable", "")
+    except OSError as exc:
+        check(False, "", f"state/ not writable: {exc}")
+    left = _claude.remaining(h)
+    check(left is None or left > 0.5, f"budget: ${left:.2f} left of ${h.get('budget_usd_total')}" if left is not None
+          else "budget: no total limit set (warn: unbounded spend)", "budget exhausted")
+    notes.append(f"info self-improvement share of spend so far: {_claude.meta_share(h):.0%} "
+                 f"(cap while building: {h.get('meta_budget_share', 0.4):.0%})")
+    gate, smoke = _evals.gate_set(h), _evals.smoke_set(h)
+    check(len(gate - smoke) >= 1, f"gate: {len(gate - smoke)} discriminating + {len(smoke)} smoke "
+          f"(daemon curates below {h.get('min_gate_discriminating', 8)})", "gate is empty: improvement has no signal", fatal=False)
+    check(_sh.which("pytest") is not None or _sp.run([sys.executable, "-c", "import pytest"]).returncode == 0,
+          "pytest importable (needed by pytest-based evals)", "pytest missing: pytest-based evals cannot run", fatal=False)
+    mutable, kernel = h.get("mutable_paths", []), ("ash/", "plugin/hooks/", "evals/", "harness.json", "bin/", "tests/")
+    check(not [m for m in mutable if any(m.startswith(k) for k in kernel)], "mutable paths exclude the kernel",
+          f"mutable_paths overlap the kernel: {mutable}")
+    d = _daemon.status(h)
+    notes.append(f"info daemon: {'running, ' + str(d.get('phase')) if d['alive'] else 'not running'}; "
+                 f"auto-start {'on' if d['enabled'] else 'off'}")
+    print("\n".join(notes + problems))
+    return 1 if problems else 0
+
+
 def cmd_eval(h, args):
     if args.repeats:
         h.cfg["eval_repeats"] = args.repeats
@@ -207,7 +250,8 @@ def parser():
     s.add_argument("--no-improve", action="store_true", help="build only; never start a self-improvement cycle")
     s.set_defaults(fn=cmd_run)
 
-    for name, fn, text in [("status", cmd_status, "show the queue"),
+    for name, fn, text in [("doctor", cmd_doctor, "pre-flight checks before running unattended"),
+                           ("status", cmd_status, "show the queue"),
                            ("report", cmd_report, "success and cost per harness version"),
                            ("lessons", cmd_lessons, "show what the harness has learned"),
                            ("pause", cmd_pause, "stop the loop after the current task"),

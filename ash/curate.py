@@ -307,7 +307,16 @@ def report(harness, limit=10):
 
 def screen(harness, repeats=2):
     """Run every reported-but-unscreened eval against the current harness."""
-    names = {os.path.basename(d) for d in evals.discover(harness) if _curation(d).get("state") == "reported"}
+    reported = [d for d in evals.discover(harness) if _curation(d).get("state") == "reported"]
+    # Full reports pass ~98% of the time, so screening them buys almost no signal: by default only
+    # narrow variants are screened and full reports join the pool unscreened.
+    names = {os.path.basename(d) for d in reported
+             if _curation(d).get("narrow_of") or harness.get("curate_screen_full", False)}
+    for d in reported:
+        if os.path.basename(d) not in names:
+            task = load_json(os.path.join(d, "task.json"))
+            task["curation"]["state"] = "pool"
+            save_json(os.path.join(d, "task.json"), task)
     if not names:
         return None
     summary = evals.run_suite(harness, harness.plugin_dir, f"screen-{time.strftime('%Y%m%d-%H%M%S')}",
@@ -390,8 +399,9 @@ def needs_growth(harness):
     return len(gate.get("gate", [])) < harness.get("min_gate_discriminating", 8)
 
 
-def grow(harness, per_source=3):
+def grow(harness, per_source=None):
     """One full curation pass across all sources: mine -> make -> report -> screen -> audit -> gate."""
+    per_source = per_source or harness.get("curate_per_source", 2)
     for name in sources(harness):
         mine(harness, name, limit=per_source)
         make(harness, name, limit=per_source)

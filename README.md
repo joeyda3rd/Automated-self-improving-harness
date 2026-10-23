@@ -2,7 +2,7 @@
 
 ASH turns plain Claude Code into an unattended software builder that improves itself. You give it an assignment. It plans the work into tasks, builds each task in an isolated git worktree, proves the work with your test command, merges it, and learns from every run. Every few tasks it proposes a change to its own skills and prompts, benchmarks that change against a hidden eval suite, and keeps the change only if the harness got measurably better.
 
-It is built only from Claude Code's own primitives: headless sessions, plugins, skills, subagents, hooks, session resume, structured output, budgets and a mod. A small, deterministic Python orchestrator (stdlib only) ties them together. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full design.
+It is built only from Claude Code's own primitives: headless sessions, plugins, skills, subagents, hooks, session resume, structured output, budgets and a mod. A small, deterministic Python orchestrator (stdlib only) ties them together. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full design and [docs/OPERATIONS.md](docs/OPERATIONS.md) for running it unattended.
 
 ```
 assignment → plan → task queue → build (worktree, stop-gate verified) → integrate → retro → lessons

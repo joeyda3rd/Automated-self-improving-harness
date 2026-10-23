@@ -103,6 +103,20 @@ _reserved = 0.0  # dollars promised to sessions still running in this process (p
 _reserve_lock = threading.Lock()
 
 
+META_ROLES = {"improver", "reporter", "auditor", "eval"}
+
+
+def meta_share(harness):
+    """Fraction of all spend that went to self-improvement work (benchmarks, proposals, curation)
+    rather than to building assigned software."""
+    rows = read_jsonl(ledger_path(harness))
+    total = sum(r.get("cost_usd", 0) for r in rows)
+    meta = sum(r.get("cost_usd", 0) for r in rows
+               if r.get("role") in META_ROLES or "/state/evals/" in (r.get("run_dir") or "")
+               or "/state/curation/" in (r.get("run_dir") or ""))
+    return meta / total if total else 0.0
+
+
 def remaining(harness):
     limit = harness.get("budget_usd_total")
     return None if not limit else max(0.0, limit - spent(harness) - _reserved)
