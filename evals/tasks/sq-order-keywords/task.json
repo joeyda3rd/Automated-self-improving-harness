@@ -1,0 +1,10 @@
+{
+  "title": "`NULLS FIRST` / `NULLS LAST` are not tokenized as order keywords like `ASC` and `DESC`",
+  "spec": "This is the sqlparse library (Python 3, no dependencies). Run the tests with `PYTHONPATH=. python3 -m pytest -q -p no:cacheprovider tests`.\n\n`ASC` and `DESC` are tokenized as `Token.Keyword.Order`, but the null ordering that belongs to the same sort specification is a plain `Token.Keyword`, so code that looks for order keywords misses it.\n\n```python\nimport sqlparse\np = sqlparse.parse('DESC NULLS LAST')[0]\n[(t.ttype, t.value) for t in p.tokens]\n```\nExpected: `[(Token.Keyword.Order, 'DESC NULLS LAST')]`\nActual: `[(Token.Keyword.Order, 'DESC'), (Token.Text.Whitespace, ' '), (Token.Keyword, 'NULLS LAST')]`\n\nThe rule: each of `ASC`, `DESC`, `NULLS FIRST`, `NULLS LAST`, `ASC NULLS FIRST`, `ASC NULLS LAST`, `DESC NULLS FIRST` and `DESC NULLS LAST` parsed on its own should be exactly one token of type `Token.Keyword.Order`. The same applies inside `ORDER BY`, e.g. `SELECT a FROM t ORDER BY a DESC NULLS LAST`.",
+  "acceptance": [
+    "Each of the eight listed forms parses to a single `Token.Keyword.Order` token",
+    "Regression tests are added and the full test suite passes"
+  ],
+  "verify_cmd": "PYTHONPATH=. python3 -m pytest -q -p no:cacheprovider tests",
+  "source": "https://github.com/andialbrecht/sqlparse/commit/b126ba5b2004474e9ad899456c077f976b761319"
+}

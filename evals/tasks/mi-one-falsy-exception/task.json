@@ -1,0 +1,11 @@
+{
+  "title": "`one()` and `only()` raise ValueError instead of my custom exception",
+  "spec": "This is the more-itertools library (Python 3, no dependencies). Run the tests with `python3 run_tests.py`.\n\n`one` and `only` let you pass `too_short` / `too_long` to raise instead of the default `ValueError`. That is ignored when the exception instance is falsy:\n\n```python\nimport more_itertools as mi\nclass FalsyError(Exception):\n    def __bool__(self):\n        return False\n\nmi.one([1, 2], too_long=FalsyError('too many'))\n# expected: FalsyError('too many')\n# actual:   ValueError: Expected exactly one item in iterable, but got 1, 2, and perhaps more.\n```\n\n`mi.one([], too_short=FalsyError('too few'))` and `mi.only([1, 2], too_long=FalsyError('too many'))` fail the same way. Whatever was passed should be raised; only when nothing was given should the default `ValueError` apply.\n\nRelated: when I do pass `too_long`, the items are still `repr`'d for a message that is never shown. If an item's `__repr__` raises, `mi.one([x, y], too_long=OverflowError)` raises that `RuntimeError` instead of `OverflowError` (same for `only`). With a custom exception, the items should not be `repr`'d at all.",
+  "acceptance": [
+    "A falsy custom `too_short` / `too_long` is raised by `one`, and `too_long` by `only`",
+    "Passing `too_long` never calls `repr` on the items",
+    "Regression tests are added and the full test suite passes"
+  ],
+  "verify_cmd": "python3 run_tests.py",
+  "source": "https://github.com/more-itertools/more-itertools/commit/def2dabea858b6ecb84ee0c52e6e07929f2c409c"
+}

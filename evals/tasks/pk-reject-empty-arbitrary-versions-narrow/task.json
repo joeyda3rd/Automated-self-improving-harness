@@ -1,0 +1,18 @@
+{
+  "title": "Specifier(\"===\") with no version is accepted",
+  "spec": "This is the `packaging` library (Python 3, no dependencies; the code is in `src/packaging/`). Run the tests with `PYTHONPATH=src python3 -m pytest -q -p no:cacheprovider tests --ignore=tests/property` (about a minute).\n\n```python\nfrom packaging.specifiers import Specifier\nSpecifier(\"===\")\n```\n\nExpected: raises `InvalidSpecifier`.\nActual: returns `<Specifier('===')>`.\n\nSimilar inputs are probably affected too; please fix the underlying problem rather than just this case.",
+  "acceptance": [
+    "Specifier(\"===\") raises InvalidSpecifier",
+    "Specifier(\"===1.0\") still parses"
+  ],
+  "verify_cmd": "PYTHONPATH=src python3 -m pytest -q -p no:cacheprovider tests --ignore=tests/property",
+  "source": "https://github.com/pypa/packaging/commit/2aada00b158feb36109d77dc91d62baa91f7d400",
+  "curation": {
+    "state": "audited",
+    "source": "packaging",
+    "narrow_of": "pk-reject-empty-arbitrary-versions",
+    "screen_rate": 1.0,
+    "screen_label": "screen-20261023-033148",
+    "verdict": "passing"
+  }
+}

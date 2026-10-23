@@ -1,0 +1,11 @@
+{
+  "title": "`ichunked` with n=0 raises a confusing islice error and eats input",
+  "spec": "This is the more-itertools library (Python 3, no dependencies). Run the tests with `python3 run_tests.py`.\n\n`chunked(iterable, 0)` yields nothing and `chunked(iterable, -1)` raises `ValueError('n must be at least 0')`. `ichunked` should behave the same, but it doesn't.\n\n```python\nimport more_itertools as mi\nsrc = iter([1, 2, 3])\n[list(c) for c in mi.ichunked(src, 0)]\n# expected: []\n# actual:   ValueError: Stop argument for islice() must be None or an integer: 0 <= x <= sys.maxsize.\nlist(src)   # expected [1, 2, 3], actual [2, 3] - an item was consumed\n```\n\nWith a negative size, `[list(c) for c in mi.ichunked(itertools.count(), -1)]` raises `ValueError: Indices for islice() must be None or an integer: ...` instead of the clear `ValueError('n must be at least 0')` that `chunked` gives.\n\nSo for `n=0`, `ichunked` should yield no chunks and leave the source iterator untouched; for any negative `n` it should raise `ValueError` with the message `n must be at least 0`.",
+  "acceptance": [
+    "`ichunked(..., 0)` yields nothing and consumes nothing from the source",
+    "Negative `n` raises `ValueError` mentioning `n must be at least 0`",
+    "Regression tests are added and the full test suite passes"
+  ],
+  "verify_cmd": "python3 run_tests.py",
+  "source": "https://github.com/more-itertools/more-itertools/commit/f89d7a3331ba6b5421273e556c0a738e3dd1dd35"
+}

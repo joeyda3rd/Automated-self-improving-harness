@@ -1,0 +1,11 @@
+{
+  "title": "`Requirement` raises `InvalidSpecifier` instead of `InvalidRequirement` for some bad version lists",
+  "spec": "This is the `packaging` library (Python 3, no dependencies; the code is in `src/packaging/`). Run the tests with `PYTHONPATH=src python3 -m pytest -q -p no:cacheprovider tests --ignore=tests/property` (about a minute).\n\n```python\nfrom packaging.requirements import Requirement, InvalidRequirement\ntry:\n    Requirement(\"demo===x,y\")\nexcept InvalidRequirement as e:\n    print(\"rejected:\", e)\n```\nExpected: `rejected: Invalid specifier: 'y'`.\nActual: `packaging.specifiers.InvalidSpecifier: Invalid specifier: 'y'` escapes, crashing code that (as documented) only catches `InvalidRequirement` for a bad requirement string.\n\n`Requirement` should only ever raise `InvalidRequirement` for a string it cannot accept, keeping the specifier's explanation (`Invalid specifier: 'y'`) in the message. Unpickling a `Requirement` whose saved state is such a string should fail with the same `TypeError` (`Cannot restore Requirement ...`) as for any other invalid requirement string.",
+  "acceptance": [
+    "`Requirement(\"demo===x,y\")` raises `InvalidRequirement` with `Invalid specifier: 'y'` in the message",
+    "Restoring a pickled state of `demo===x,y` raises the usual `Cannot restore Requirement` `TypeError`",
+    "Regression tests are added and the full test suite passes"
+  ],
+  "verify_cmd": "PYTHONPATH=src python3 -m pytest -q -p no:cacheprovider tests --ignore=tests/property",
+  "source": "https://github.com/pypa/packaging/commit/fe18f139c5b3d73cd9fdd9b25f1eda1b6fd7ba15"
+}

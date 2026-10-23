@@ -1,0 +1,10 @@
+{
+  "title": "Fix median for even-length input",
+  "spec": "Users report that `stats.median([1, 2, 3, 4])` returns 3 instead of 2.5. Fix `median` so even-length input returns the mean of the two middle values, and add a regression test. Do not change `mean`.",
+  "acceptance": [
+    "median of an even-length list is the mean of the two middle values",
+    "a regression test covers the bug",
+    "`python3 -m unittest -q` passes"
+  ],
+  "verify_cmd": "python3 -m unittest -q"
+}

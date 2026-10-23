@@ -1,0 +1,12 @@
+{
+  "title": "Text disappears from a code span containing `<!--[if mso]>`",
+  "spec": "This is the Python-Markdown library (Python 3, no dependencies). Run the tests with `python3 run_tests.py`.\n\nWriting about Outlook conditional comments in inline code loses part of the code span. It seems to happen when two such unterminated comment openers appear in the same paragraph.\n\nInput: `markdown.markdown('Test `<!--[if mso]>` and `<!--[if !mso]>`')`\nExpected: `<p>Test <code>&lt;!--[if mso]&gt;</code> and <code>&lt;!--[if !mso]&gt;</code></p>`\nActual: `<p>Test <code>&lt; mso]&gt;</code> and <code>&lt;!--[if !mso]&gt;</code></p>`\n\nThe `!--[if` part of the first span is silently dropped. A simpler case does the same: `Test `<!--foo>` and `<!--bar>`` gives `<code>&lt;&gt;</code>` for the first span. Anything that looks like the start of an HTML comment but is never closed should come out verbatim (escaped) in the code span, and the parser must not drop text or loop forever on such input.",
+  "acceptance": [
+    "The reported input renders as expected",
+    "Other bogus or unclosed comment openers inside code spans are kept verbatim",
+    "A regression test is added",
+    "The full test suite passes"
+  ],
+  "verify_cmd": "python3 run_tests.py",
+  "source": "https://github.com/Python-Markdown/markdown/commit/f9253495f5d9919f2fdd5e147832b5fc21330f65"
+}

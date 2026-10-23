@@ -1,0 +1,11 @@
+{
+  "title": "`get_real_name()` returns a middle part of names with more than two dotted parts",
+  "spec": "This is the sqlparse library (Python 3, no dependencies). Run the tests with `PYTHONPATH=. python3 -m pytest -q -p no:cacheprovider tests`.\n\nFor a fully qualified name with three or more parts, `get_real_name()` returns the second part instead of the object name.\n\n```python\nimport sqlparse\nident = sqlparse.parse('db.schema.tbl.col')[0].tokens[0]\nident.get_real_name(), ident.get_name(), ident.get_parent_name()\n```\nExpected: `('col', 'col', 'db')`\nActual: `('schema', 'schema', 'db')`\n\nAliased and function names are affected the same way: for `x.y.z AS w` the real name should be `'z'` (actual `'y'`, alias `'w'` is correct), and for `mydb.sch.func(1)` it should be `'func'` (actual `'sch'`).\n\nThe real name is the part after the last dot. Two-part names such as `a.b` (real name `'b'`) already work and must keep working, and `get_parent_name()` should keep returning the first part.",
+  "acceptance": [
+    "`get_real_name()` and `get_name()` return the last dotted part for names of any length, including aliased names and function calls",
+    "`get_parent_name()` and two-part names are unchanged",
+    "Regression tests are added and the full test suite passes"
+  ],
+  "verify_cmd": "PYTHONPATH=. python3 -m pytest -q -p no:cacheprovider tests",
+  "source": "https://github.com/andialbrecht/sqlparse/commit/f66d12c245412f28c58f045b646eb53c0e691b8b"
+}

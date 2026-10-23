@@ -1,0 +1,12 @@
+{
+  "title": "Reference link `[`Text`]` is not linked",
+  "spec": "This is the Python-Markdown library (Python 3, no dependencies). Run the tests with `python3 run_tests.py`.\n\nA reference-style link whose label is inline code is not turned into a link.\n\nInput:\n\n```\n[`Text`]\n\n[`Text`]: http://example.com\n```\n\nExpected: `<p><a href=\"http://example.com\"><code>Text</code></a></p>`\nActual: `<p>[<code>Text</code>]</p>`\n\nSimilar inputs are probably affected too; please fix the underlying problem rather than just this case.",
+  "acceptance": [
+    "the reported example produces the expected output",
+    "the underlying problem is fixed, not just the reported input",
+    "the full test suite passes"
+  ],
+  "verify_cmd": "python3 run_tests.py",
+  "source": "https://github.com/Python-Markdown/markdown/commit/07dfa4eb43f7a2ab3181b4f842a960a03a6c1221",
+  "smoke": true
+}

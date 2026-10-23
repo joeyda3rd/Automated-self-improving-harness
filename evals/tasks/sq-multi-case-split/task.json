@@ -1,0 +1,11 @@
+{
+  "title": "`sqlparse.split` cuts a trigger body in two when it contains two `CASE ... END` expressions",
+  "spec": "This is the sqlparse library (Python 3, no dependencies). Run the tests with `PYTHONPATH=. python3 -m pytest -q -p no:cacheprovider tests`.\n\nA `CREATE TRIGGER` whose `BEGIN ... END` body has more than one `CASE` expression is split before its final `END`.\n\n```python\nimport sqlparse\nsql = \"\"\"CREATE TRIGGER mytrig\nAFTER UPDATE OF vvv ON mytable\nBEGIN\n    UPDATE aa\n        SET mycola = (CASE WHEN (A=1) THEN 2 END);\n    UPDATE bb\n        SET mycolb = (CASE WHEN (B=1) THEN 5 END);\nEND;\"\"\"\nsqlparse.split(sql)\n```\nExpected: one statement, the whole trigger.\nActual: two statements; the first ends after the second `UPDATE` and the second is just `'END;'`.\n\nThe `END` that closes a `CASE` expression must not be counted as closing the surrounding `BEGIN` block, however many `CASE` expressions the body contains.",
+  "acceptance": [
+    "The reported trigger splits into exactly one statement",
+    "Other procedure, function and trigger splitting is unchanged",
+    "Regression tests are added and the full test suite passes"
+  ],
+  "verify_cmd": "PYTHONPATH=. python3 -m pytest -q -p no:cacheprovider tests",
+  "source": "https://github.com/andialbrecht/sqlparse/commit/791e25de46f443597d99314cfd1a68217bcaf970"
+}

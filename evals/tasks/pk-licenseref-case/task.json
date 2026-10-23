@@ -1,0 +1,11 @@
+{
+  "title": "`canonicalize_license_expression` rewrites every `LicenseRef-` to the last case variant",
+  "spec": "This is the `packaging` library (Python 3, no dependencies; the code is in `src/packaging/`). Run the tests with `PYTHONPATH=src python3 -m pytest -q -p no:cacheprovider tests --ignore=tests/property` (about a minute).\n\n```python\nfrom packaging.licenses import canonicalize_license_expression\ncanonicalize_license_expression(\"LicenseRef-mit OR licenseref-MIT\")\n```\nExpected: `'LicenseRef-mit OR LicenseRef-mit'`.\nActual: `'LicenseRef-MIT OR LicenseRef-MIT'`.\n\nSPDX treats the idstring after `LicenseRef-` case-insensitively, so case variants name the same license and folding them to one spelling is right. But the spelling kept should be that of the first occurrence in the expression, not the last one, so the author's own spelling survives. For example `\"(LICENSEREF-Foo OR licenseref-foo) AND MIT AND LicenseRef-FOO\"` should give `'(LicenseRef-Foo OR LicenseRef-Foo) AND MIT AND LicenseRef-Foo'` (today all become `LicenseRef-FOO`). The prefix itself is always written `LicenseRef-`, as now.",
+  "acceptance": [
+    "Case variants of one `LicenseRef-` all use the spelling of its first occurrence",
+    "Single refs like `licenseref-public-domain` still give `LicenseRef-public-domain`",
+    "Regression tests are added and the full test suite passes"
+  ],
+  "verify_cmd": "PYTHONPATH=src python3 -m pytest -q -p no:cacheprovider tests --ignore=tests/property",
+  "source": "https://github.com/pypa/packaging/commit/2c87a33f665828b7aa0f650b1b50243b3ab95695"
+}

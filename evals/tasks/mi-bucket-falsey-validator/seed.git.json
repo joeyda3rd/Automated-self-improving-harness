@@ -1,0 +1,12 @@
+{
+  "url": "https://github.com/more-itertools/more-itertools",
+  "rev": "1ea82a711c69f590054987b5cb194157f8ce8ac4",
+  "paths": [
+    "more_itertools",
+    "tests",
+    "pyproject.toml",
+    "setup.cfg",
+    "README.rst"
+  ],
+  "fix": "67fcf640477c78605580f5ee703a54c73c1e7a8a"
+}

@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ash-harness"
+version = "0.2.0"
+description = "Automated Self-improving Harness: an unattended software builder on Claude Code that benchmarks and improves itself."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.9"
+authors = [{ name = "Joey Marino" }]
+keywords = ["claude-code", "agents", "self-improving", "harness", "evals", "automation"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: POSIX",
+  "Topic :: Software Development :: Build Tools",
+]
+dependencies = []  # standard library only
+
+[project.scripts]
+ash = "ash.cli:main"
+
+[project.urls]
+Repository = "https://github.com/joeyda3rd/Automated-self-improving-harness"
+
+[tool.setuptools]
+packages = ["ash"]
+
+[tool.setuptools.package-data]
+ash = ["prompts/*.md"]

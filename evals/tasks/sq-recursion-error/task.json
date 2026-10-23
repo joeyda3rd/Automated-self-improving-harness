@@ -1,0 +1,10 @@
+{
+  "title": "Deeply nested input crashes `sqlparse.parse` with a bare `RecursionError`",
+  "spec": "This is the sqlparse library (Python 3, no dependencies). Run the tests with `PYTHONPATH=. python3 -m pytest -q -p no:cacheprovider tests`.\n\nParsing very deeply nested input raises Python's `RecursionError` instead of a sqlparse error, so callers that catch the library's own exception still crash.\n\n```python\nimport sqlparse\nsqlparse.parse('[' * 10000 + ']' * 10000)\n```\nExpected: `sqlparse.exceptions.SQLParseError`\nActual: `RecursionError: maximum recursion depth exceeded`\n\nRunning out of recursion depth anywhere while parsing (including with a lowered `sys.setrecursionlimit`) should be reported as `sqlparse.exceptions.SQLParseError`, the exception sqlparse already uses for its other parse failures.",
+  "acceptance": [
+    "The reported input raises `SQLParseError`, not `RecursionError`, also under a low recursion limit",
+    "Regression tests are added and the full test suite passes"
+  ],
+  "verify_cmd": "PYTHONPATH=. python3 -m pytest -q -p no:cacheprovider tests",
+  "source": "https://github.com/andialbrecht/sqlparse/commit/b4a39d9850969b4e1d6940d32094ee0b42a2cf03"
+}

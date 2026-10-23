@@ -1,0 +1,11 @@
+{
+  "title": "`canonicalize_license_expression` turns `LicenseRef-mit OR licenseref-MIT` into `LicenseRef-MIT OR LicenseRef-MIT`",
+  "spec": "This is the `packaging` library (Python 3, no dependencies; the code is in `src/packaging/`). Run the tests with `PYTHONPATH=src python3 -m pytest -q -p no:cacheprovider tests --ignore=tests/property` (about a minute).\n\n```python\nfrom packaging.licenses import canonicalize_license_expression\ncanonicalize_license_expression(\"LicenseRef-mit OR licenseref-MIT\")\n```\nExpected: `'LicenseRef-mit OR LicenseRef-mit'`.\nActual: `'LicenseRef-MIT OR LicenseRef-MIT'`.\n\nWhen the same reference is written with different casing, I'd expect the spelling of its first occurrence to be used throughout. Similar inputs are probably affected too; please fix the underlying problem rather than just this case.",
+  "acceptance": [
+    "the reported example produces the expected output",
+    "the underlying problem is fixed, not just the reported input",
+    "the full test suite passes"
+  ],
+  "verify_cmd": "PYTHONPATH=src python3 -m pytest -q -p no:cacheprovider tests --ignore=tests/property",
+  "source": "https://github.com/pypa/packaging/commit/2c87a33f665828b7aa0f650b1b50243b3ab95695"
+}

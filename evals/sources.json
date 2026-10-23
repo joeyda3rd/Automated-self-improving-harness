@@ -1,0 +1,60 @@
+{
+  "markdown": {
+    "url": "https://github.com/Python-Markdown/markdown",
+    "prefix": "md",
+    "src": "markdown/",
+    "tests": "tests/",
+    "paths": [
+      "markdown",
+      "tests",
+      "pyproject.toml",
+      "setup.py"
+    ],
+    "test_cmd": "python3 run_tests.py",
+    "prepare": "markdown.sh",
+    "intro": "This is the Python-Markdown library (Python 3, no dependencies). Run the tests with `python3 run_tests.py`."
+  },
+  "more-itertools": {
+    "url": "https://github.com/more-itertools/more-itertools",
+    "prefix": "mi",
+    "src": "more_itertools/",
+    "tests": "tests/",
+    "paths": [
+      "more_itertools",
+      "tests",
+      "pyproject.toml",
+      "setup.cfg",
+      "README.rst"
+    ],
+    "test_cmd": "python3 run_tests.py",
+    "prepare": "more-itertools.sh",
+    "intro": "This is the more-itertools library (Python 3, no dependencies). Run the tests with `python3 run_tests.py`."
+  },
+  "sqlparse": {
+    "url": "https://github.com/andialbrecht/sqlparse",
+    "prefix": "sq",
+    "src": "sqlparse/",
+    "tests": "tests/",
+    "paths": [
+      "sqlparse",
+      "tests",
+      "pyproject.toml"
+    ],
+    "test_cmd": "PYTHONPATH=. python3 -m pytest -q -p no:cacheprovider tests",
+    "intro": "This is the sqlparse library (Python 3, no dependencies). Run the tests with `PYTHONPATH=. python3 -m pytest -q -p no:cacheprovider tests`."
+  },
+  "packaging": {
+    "url": "https://github.com/pypa/packaging",
+    "prefix": "pk",
+    "src": "src/packaging/",
+    "tests": "tests/",
+    "paths": [
+      "src",
+      "tests",
+      "pyproject.toml"
+    ],
+    "test_cmd": "PYTHONPATH=src python3 -m pytest -q -p no:cacheprovider tests --ignore=tests/property",
+    "intro": "This is the `packaging` library (Python 3, no dependencies; the code is in `src/packaging/`). Run the tests with `PYTHONPATH=src python3 -m pytest -q -p no:cacheprovider tests --ignore=tests/property` (about a minute).",
+    "mine_cmd": "PYTHONPATH=src python3 -m pytest -q -p no:cacheprovider {tests}"
+  }
+}

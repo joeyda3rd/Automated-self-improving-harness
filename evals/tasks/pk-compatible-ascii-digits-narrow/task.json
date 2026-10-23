@@ -1,0 +1,11 @@
+{
+  "title": "`Specifier(\"~=1.2.3po\\u017ft1\")` is accepted, then `contains()` fails with `AssertionError`",
+  "spec": "This is the `packaging` library (Python 3, no dependencies; the code is in `src/packaging/`). Run the tests with `PYTHONPATH=src python3 -m pytest -q -p no:cacheprovider tests --ignore=tests/property` (about a minute).\n\n```python\nfrom packaging.specifiers import Specifier\ns = Specifier(\"~=1.2.3po\\u017ft1\")   # U+017F LATIN SMALL LETTER LONG S\ns.contains(\"1.2.3.post1\")\n```\nExpected: `InvalidSpecifier: Invalid specifier: '~=1.2.3poſt1'` at construction, as `==1.2.3poſt1`, `>=1.2.3poſt1` and `Version(\"1.2.3poſt1\")` already do.\nActual: the specifier is accepted, and `contains()` then fails with a bare `AssertionError`.\n\nSimilar inputs are probably affected too; please fix the underlying problem rather than just this case.",
+  "acceptance": [
+    "the reported example produces the expected output",
+    "the underlying problem is fixed, not just the reported input",
+    "the full test suite passes"
+  ],
+  "verify_cmd": "PYTHONPATH=src python3 -m pytest -q -p no:cacheprovider tests --ignore=tests/property",
+  "source": "https://github.com/pypa/packaging/commit/f14a0933259121eb9b986bc1b7924910755d535d"
+}

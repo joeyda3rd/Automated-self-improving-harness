@@ -1,0 +1,19 @@
+{
+  "updated": 1792726792.0879989,
+  "gate": [
+    "md-attr-name-sanitize-narrow",
+    "md-em-strong-nesting-narrow",
+    "md-html-comment-paragraph-narrow",
+    "sq-begin-transaction-narrow"
+  ],
+  "smoke": [
+    "md-reflink-backticks-narrow",
+    "mi-bucket-invented-key-narrow",
+    "pk-tags-empty-platforms-narrow",
+    "sq-leading-dot-float-narrow"
+  ],
+  "noisy": [
+    "md-unterminated-html-narrow",
+    "sq-splitter-nesting-narrow"
+  ]
+}

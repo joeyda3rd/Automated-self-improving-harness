@@ -1,0 +1,10 @@
+{
+  "url": "https://github.com/Python-Markdown/markdown",
+  "rev": "fb6b27a6ff90980b5bcb0cd51528a7c9dc3a93ca",
+  "paths": [
+    "markdown",
+    "tests",
+    "pyproject.toml"
+  ],
+  "fix": "07dfa4eb43f7a2ab3181b4f842a960a03a6c1221"
+}

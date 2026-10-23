@@ -1,0 +1,11 @@
+{
+  "title": "`Metadata.from_email` hides validation errors when the input also has an unknown field",
+  "spec": "This is the `packaging` library (Python 3, no dependencies; the code is in `src/packaging/`). Run the tests with `PYTHONPATH=src python3 -m pytest -q -p no:cacheprovider tests --ignore=tests/property` (about a minute).\n\n```python\nfrom packaging import metadata\nmetadata.Metadata.from_email(\n    \"Metadata-Version: 2.6\\nName: packaging\\n\"\n    \"Unknown-Field: value\\nVersion: invalid version\\n\")\n```\nExpected: one `ExceptionGroup` listing both problems, `unrecognized field: 'unknown-field'` and the invalid `version`.\nActual: `ExceptionGroup('unparsed', ...)` with only the unknown-field error; the bad version shows up only after that is fixed. Likewise `from_email(\"Hello: PyPA\")` reports `hello` but not the missing `metadata-version`, `name` and `version`.\n\nWith validation on, `from_email` should report every problem at once: a single `ExceptionGroup` whose message is always `\"invalid or unparsed metadata\"`, holding an `InvalidMetadata` with the right `field` for each problem, and not chained to another exception (`__context__` is `None`). A required field given twice (e.g. two `Name:` lines) is reported once, as invalid data, not also as missing. Valid input still returns a `Metadata`.",
+  "acceptance": [
+    "Unknown/unparsed fields and validation errors are reported together in one `invalid or unparsed metadata` group",
+    "A duplicated required field gives exactly one error for that field",
+    "Regression tests are added and the full test suite passes"
+  ],
+  "verify_cmd": "PYTHONPATH=src python3 -m pytest -q -p no:cacheprovider tests --ignore=tests/property",
+  "source": "https://github.com/pypa/packaging/commit/206834025040aca6f8a2fdfc4039dbfa2a9861a6"
+}

@@ -1,0 +1,16 @@
+{
+  "title": "running_min / running_max return a different one of several equal values than min() / max() would",
+  "spec": "This is the more-itertools library (Python 3, no dependencies). Run the tests with `python3 run_tests.py`.\n\nWhen the input has equal-comparing values of different types, `running_min` and `running_max` with a `maxlen` window do not return the same object that the builtin `min()`/`max()` would return for that window (which is the earliest of the equal items).\n\n```python\nfrom fractions import Fraction\nfrom more_itertools import running_min, running_max\ndata = [0, 0.0, Fraction(0)]\nprint([type(x).__name__ for x in running_min(data, maxlen=2)])\nprint([type(x).__name__ for x in running_max(data, maxlen=2)])\n```\n\nExpected (matching `min(data[:1])`, `min(data[:2])`, `min(data[1:3])`, and likewise for max):\n`['int', 'int', 'float']` for both.\n\nActual:\n`['int', 'float', 'Fraction']` for both.\n\nRule: for every window position, the yielded item must be exactly what `min(window)` / `max(window)` returns, including which of several equal items is chosen. Numeric results for ordinary distinct values are already right and must stay so.",
+  "acceptance": [
+    "running_min([0, 0.0, Fraction(0)], maxlen=2) yields types int, int, float",
+    "running_max([0, 0.0, Fraction(0)], maxlen=2) yields types int, int, float",
+    "Each yielded item is the same object min()/max() would return for the current window",
+    "Existing running_min/running_max behavior for distinct values and unbounded windows is unchanged"
+  ],
+  "verify_cmd": "python3 run_tests.py",
+  "source": "https://github.com/more-itertools/more-itertools/commit/d992be0de9383ddcaae3a24866a2d96b52132b07",
+  "curation": {
+    "state": "pool",
+    "source": "more-itertools"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "title": "Footnotes are numbered in the order they are defined, not the order they are referenced",
+  "spec": "This is the Python-Markdown library (Python 3, no dependencies). Run the tests with `python3 run_tests.py`.\n\nWith `markdown.markdown(text, extensions=['markdown.extensions.footnotes'])`, footnotes are numbered and listed in the order of their definitions. When definitions are not written in the same order as the references, the first reference in the text shows up as footnote 2:\n\n```\nFirst footnote reference[^first]. Second footnote reference[^last].\n\n[^last]: Second footnote.\n[^first]: First footnote.\n```\n\nActual: the `[^first]` reference renders as `<a class=\"footnote-ref\" href=\"#fn:first\">2</a>`, `[^last]` as `1`, and the footnote list has `<li id=\"fn:last\">` before `<li id=\"fn:first\">`.\n\nExpected: `[^first]` is `1` and `[^last]` is `2`, and the list shows `<li id=\"fn:first\">` (backref title \"Jump back to footnote 1 in the text\") first, then `<li id=\"fn:last\">`.\n\nFootnotes should be numbered by where they are first referenced in the document, wherever the reference sits (lists, including loose lists, blockquotes, inline HTML, or inside another footnote's text). Text that only looks like a reference, such as `[^x]` inside a code span or a link label, does not count. Definitions that are never referenced still appear, after the referenced ones. Some people rely on the current behaviour, so please add a footnotes config option `USE_DEFINITION_ORDER` (default `False`); when `True`, the old definition-order numbering is kept.",
+  "acceptance": [
+    "The reported input numbers and lists footnotes in reference order",
+    "Reference order holds for references in lists, loose lists, blockquotes, inline HTML and nested footnotes; code spans and link text are ignored",
+    "`extension_configs={'markdown.extensions.footnotes': {'USE_DEFINITION_ORDER': True}}` restores definition order",
+    "Regression tests are added and the full test suite passes"
+  ],
+  "verify_cmd": "python3 run_tests.py",
+  "source": "https://github.com/Python-Markdown/markdown/commit/07bf2076623be5de9952e1f35bfb8c218b699300"
+}

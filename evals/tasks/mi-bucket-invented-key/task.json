@@ -1,0 +1,11 @@
+{
+  "title": "Checking a missing key with `in` adds it to `bucket`'s keys",
+  "spec": "This is the more-itertools library (Python 3, no dependencies). Run the tests with `python3 run_tests.py`.\n\nA failed lookup on a `bucket` leaves a phantom key behind, so the object reports a key that no item ever had.\n\n```python\nimport more_itertools as mi\nD = mi.bucket([10, 20, 11, 21], key=lambda x: 10 * (x // 10))\n30 in D        # False, as expected\nsorted(D)      # expected [10, 20], actual [10, 20, 30]\n```\n\nSelecting an absent bucket does the same: after `list(D[30])` (which correctly gives `[]`), `sorted(D)` is `[10, 20, 30]` instead of `[10, 20]`. It also happens when a `validator` accepts the missing key, and every miss adds one more key.\n\nIterating a bucket should only ever report keys for which at least one item was actually seen, no matter how many `in` tests or lookups were done before. Keys whose items were already consumed through `D[key]` should still be listed, as now.",
+  "acceptance": [
+    "`in` tests and lookups of missing keys never change the reported keys, with or without a validator",
+    "Keys of items already consumed through selection are still reported",
+    "Regression tests are added and the full test suite passes"
+  ],
+  "verify_cmd": "python3 run_tests.py",
+  "source": "https://github.com/more-itertools/more-itertools/commit/2b8d5cddce4ea01f88a973551cd50479cf5fa45f"
+}

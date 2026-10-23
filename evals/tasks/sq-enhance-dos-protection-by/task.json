@@ -1,0 +1,15 @@
+{
+  "title": "Oversized or too-deeply-nested SQL is silently half-parsed instead of rejected",
+  "spec": "This is the sqlparse library (Python 3, no dependencies). Run the tests with `PYTHONPATH=. python3 -m pytest -q -p no:cacheprovider tests`.\n\nsqlparse has limits on grouping depth and on the number of tokens in a token list (meant to protect against DoS). When input exceeds them, the library quietly gives up on grouping and returns a poorly processed result with no indication anything went wrong. It should instead raise `sqlparse.exceptions.SQLParseError`.\n\nExample 1:\n    import sqlparse\n    sql = \"SELECT \" + \"(\" * 200 + \"1\" + \")\" * 200\n    sqlparse.format(sql, reindent=True)\nEXPECTED: raises SQLParseError whose message contains \"Maximum grouping depth exceeded\".\nACTUAL: returns a formatted string (408 chars), no error.\n\nExample 2:\n    sql = \"SELECT \" + \", \".join(f\"col{i}\" for i in range(15000)) + \" FROM table1\"\n    sqlparse.format(sql, reindent=True)\nEXPECTED: raises SQLParseError whose message contains \"Maximum number of tokens exceeded\".\nACTUAL: returns a ~139k char string, no error.\n\nSame rule for a huge tuple list, e.g. `WHERE (a, b) IN ((1, 1), (1, 2), ... 5000 tuples)` formatted with reindent=True and keyword_case=\"upper\": it should raise SQLParseError with \"Maximum number of tokens exceeded\". Normal-sized SQL (including ~100 tuples) must keep working unchanged.",
+  "acceptance": [
+    "Excessive nesting depth raises SQLParseError with a message containing \"Maximum grouping depth exceeded\"",
+    "Token lists over the limit (long column list, 5000-tuple IN list) raise SQLParseError with a message containing \"Maximum number of tokens exceeded\"",
+    "Ordinary queries and a 100-tuple IN list still format normally"
+  ],
+  "verify_cmd": "PYTHONPATH=. python3 -m pytest -q -p no:cacheprovider tests",
+  "source": "https://github.com/andialbrecht/sqlparse/commit/da67ac16b8fa2c5041458bee728c8a914bed2d37",
+  "curation": {
+    "state": "pool",
+    "source": "sqlparse"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "title": "`sqlparse.split` ends an anonymous `BEGIN ... END` block early at `END FOR`, `END IF` or `END CASE`",
+  "spec": "This is the sqlparse library (Python 3, no dependencies). Run the tests with `PYTHONPATH=. python3 -m pytest -q -p no:cacheprovider tests`.\n\nIn an anonymous `BEGIN ... END;` block, nested control structures make the splitter close the block too early.\n\n```python\nimport sqlparse\nsql = \"\"\"BEGIN\n    SELECT 1;\n    FOR R DO\n        SELECT 1;\n    END FOR;\nEND;\"\"\"\nsqlparse.split(sql)\n```\nExpected: one statement.\nActual: `['BEGIN\\n    SELECT 1;\\n    FOR R DO\\n        SELECT 1;\\n    END FOR;', 'END;']`\n\nA second case: a block containing `IF 1 THEN SELECT CASE WHEN 1 THEN 2 ELSE 3 END AS COUNT; ELSE SELECT 2; END IF;` comes back as four pieces instead of one; the inline `CASE ... END` expression closes the block.\n\nThe rule: inside a `BEGIN ... END` block, every nested `IF ... END IF`, `CASE ... END CASE` (procedural), inline `CASE ... END`, `FOR/WHILE ... DO/LOOP ... END FOR/END WHILE/END LOOP` and inner `BEGIN ... END` must be matched with its own closer, so only the block's own `END;` ends the statement. Statements after the block (e.g. a following `SELECT 3;`) must still be split off. `FOR UPDATE` / `FOR SHARE` in ordinary queries, inside or outside a block, are not loops.",
+  "acceptance": [
+    "Both reported blocks split into exactly one statement",
+    "Blocks with sequential `FOR ... LOOP ... END LOOP` or `CASE ... END CASE` are one statement, and a statement after them is split off",
+    "`SELECT ... FOR UPDATE; SELECT 3;` still splits into two statements",
+    "Regression tests are added and the full test suite passes"
+  ],
+  "verify_cmd": "PYTHONPATH=. python3 -m pytest -q -p no:cacheprovider tests",
+  "source": "https://github.com/andialbrecht/sqlparse/commit/8f978caa7cc777d845d358bfc82ea30110395d32"
+}

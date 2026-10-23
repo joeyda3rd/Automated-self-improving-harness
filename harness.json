@@ -1,0 +1,42 @@
+{
+  "claude_bin": "claude",
+  "model": null,
+  "permission_mode": "bypassPermissions",
+  "budget_usd_per_run": 5.0,
+  "budget_usd_total": 129.51,
+  "max_attempts_per_run": 2,
+  "max_runs_per_task": 3,
+  "gate_max": 3,
+  "verify_timeout_seconds": 900,
+  "retro": "auto",
+  "improve_every": 5,
+  "improve_budget_usd": 5.0,
+  "eval_budget_usd_per_task": 2.0,
+  "eval_repeats": 1,
+  "max_consecutive_failures": 3,
+  "idle_sleep_seconds": 60,
+  "learnings_max": 60,
+  "mutable_paths": [
+    "plugin/skills/",
+    "plugin/agents/",
+    "plugin/roles/",
+    "plugin/bin/",
+    "docs/"
+  ],
+  "improve_evals": [
+    "@gate"
+  ],
+  "improve_eval_repeats": 2,
+  "eval_workers": 4,
+  "retro_min_tool_errors": 3,
+  "retro_min_turns": 20,
+  "effort": {
+    "default": "medium"
+  },
+  "min_gate_discriminating": 8,
+  "min_curate_budget_usd": 7,
+  "min_cycle_budget_usd": 5,
+  "curate_per_source": 2,
+  "meta_budget_share": 0.4,
+  "curate_interval_s": 21600
+}

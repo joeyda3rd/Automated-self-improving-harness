@@ -1,0 +1,18 @@
+{
+  "title": "TOC entry shows stray text when a heading contains an HTML tag with \">\" in an attribute value",
+  "spec": "This is the Python-Markdown library (Python 3, no dependencies). Run the tests with `python3 run_tests.py`.\n\nWith the `toc` extension, a heading with inline HTML whose quoted attribute contains `>` gets a garbled TOC name and id.\n\n```python\nmd = markdown.Markdown(extensions=['toc'])\nmd.convert('# <abbr title=\"Python > 3\">Python</abbr> support')\nprint(md.toc_tokens[0]['name'], md.toc_tokens[0]['id'])\n```\nEXPECTED: name `Python support`, id `python-support`.\nACTUAL: name `3\">Python support`, id `3python-support`.\n\nSimilar inputs are probably affected too; please fix the underlying problem rather than just this case.",
+  "acceptance": [
+    "The heading above yields TOC name `Python support` and id `python-support`.",
+    "Existing TOC tests still pass (`python3 run_tests.py`)."
+  ],
+  "verify_cmd": "python3 run_tests.py",
+  "source": "https://github.com/Python-Markdown/markdown/commit/5e335ef7e7be8ff6692363c56d1352e71b8ef279",
+  "curation": {
+    "state": "audited",
+    "source": "markdown",
+    "narrow_of": "md-toc-labels-quoted-html",
+    "screen_rate": 1.0,
+    "screen_label": "screen-20261023-033148",
+    "verdict": "passing"
+  }
+}

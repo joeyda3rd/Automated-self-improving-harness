@@ -1,0 +1,12 @@
+{
+  "title": "TOC double-escapes `<`, `>` and `&` from code spans in headers and puts entity names in the ids",
+  "spec": "This is the Python-Markdown library (Python 3, no dependencies). Run the tests with `python3 run_tests.py`.\n\nWhen a header contains inline code with HTML special characters, the table of contents shows the escaped entities literally and the generated id is built from the entity names.\n\n```\nmd = markdown.Markdown(extensions=['markdown.extensions.toc'])\nmd.convert('[TOC]\\n\\n# `<test>`')\n```\n\nExpected:\n```\n<div class=\"toc\">\\n<ul>\\n<li><a href=\"#test\">&lt;test&gt;</a></li>\\n</ul>\\n</div>\\n<h1 id=\"test\"><code>&lt;test&gt;</code></h1>\n```\n\nActual:\n```\n<div class=\"toc\">\\n<ul>\\n<li><a href=\"#lttestgt\">&amp;lt;test&amp;gt;</a></li>\\n</ul>\\n</div>\\n<h1 id=\"lttestgt\"><code>&lt;test&gt;</code></h1>\n```\n\nSo a reader sees `&lt;test&gt;` in the TOC, and the anchor is `#lttestgt`. Same with ``# Use `a & b` ``: the TOC link reads `Use a &amp;amp; b` and the id is `use-a-amp-b` instead of `use-a-b`. Characters inside a code span in a header should be treated as the characters they are, both for the TOC text (escaped exactly once) and for the slug, just like the same characters outside code.",
+  "acceptance": [
+    "The reported header renders with TOC text `&lt;test&gt;` and id `test`",
+    "Code spans containing `&`, `<` or `>` in headers are escaped once in the TOC and do not leak entity names into ids",
+    "A regression test is added",
+    "The full test suite passes"
+  ],
+  "verify_cmd": "python3 run_tests.py",
+  "source": "https://github.com/Python-Markdown/markdown/commit/ada40c6619fd0be740af646b043937e560716c95"
+}

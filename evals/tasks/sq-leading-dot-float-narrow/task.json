@@ -1,0 +1,12 @@
+{
+  "title": "`BETWEEN .03 AND .06` is parsed as identifiers instead of keywords",
+  "spec": "This is the sqlparse library (Python 3, no dependencies). Run the tests with `PYTHONPATH=. python3 -m pytest -q -p no:cacheprovider tests`.\n\n```python\nimport sqlparse\np = sqlparse.parse('a BETWEEN .03 AND .06')[0]\n[(t.ttype, t.value) for t in p.flatten() if not t.is_whitespace]\n```\nExpected: `[(Token.Name, 'a'), (Token.Keyword, 'BETWEEN'), (Token.Literal.Number.Float, '.03'), (Token.Keyword, 'AND'), (Token.Literal.Number.Float, '.06')]`\nActual: `BETWEEN` and `AND` come out as `Token.Name`, and `p.tokens` groups them into identifiers `'a BETWEEN'` and `'.03 AND'`.\n\nSimilar inputs are probably affected too; please fix the underlying problem rather than just this case.",
+  "acceptance": [
+    "the reported example produces the expected output",
+    "the underlying problem is fixed, not just the reported input",
+    "the full test suite passes"
+  ],
+  "verify_cmd": "PYTHONPATH=. python3 -m pytest -q -p no:cacheprovider tests",
+  "source": "https://github.com/andialbrecht/sqlparse/commit/a194d3187b04b0aed7a935c3401f068236fb6264",
+  "smoke": true
+}

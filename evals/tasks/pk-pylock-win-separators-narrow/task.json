@@ -1,0 +1,11 @@
+{
+  "title": "pylock rejects the sdist path `dist/files\\example-1.0.tar.gz`",
+  "spec": "This is the `packaging` library (Python 3, no dependencies; the code is in `src/packaging/`). Run the tests with `PYTHONPATH=src python3 -m pytest -q -p no:cacheprovider tests --ignore=tests/property` (about a minute).\n\n```python\nfrom packaging.pylock import Pylock\nPylock.from_dict({\"lock-version\": \"1.0\", \"created-by\": \"pip\", \"packages\": [{\n    \"name\": \"example\", \"version\": \"1.0\",\n    \"sdist\": {\"path\": \"dist/files\\\\example-1.0.tar.gz\",\n              \"hashes\": {\"sha256\": \"f\" * 64}}}]})\n```\nExpected: the lock loads and `packages[0].sdist.filename == 'example-1.0.tar.gz'`.\nActual: `PylockValidationError: Name in 'files\\\\example-1.0.tar.gz' is not consistent with package name 'example' in 'packages[0].sdist'`.\n\nSimilar inputs are probably affected too; please fix the underlying problem rather than just this case.",
+  "acceptance": [
+    "the reported example produces the expected output",
+    "the underlying problem is fixed, not just the reported input",
+    "the full test suite passes"
+  ],
+  "verify_cmd": "PYTHONPATH=src python3 -m pytest -q -p no:cacheprovider tests --ignore=tests/property",
+  "source": "https://github.com/pypa/packaging/commit/fa52d7237a74effdadd4ad2627d4ca413234cac2"
+}

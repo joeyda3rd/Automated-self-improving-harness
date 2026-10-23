@@ -1,0 +1,12 @@
+{
+  "title": "Attribute names in fenced code and legacy `{@...}` attributes can break out of the tag and inject HTML",
+  "spec": "This is the Python-Markdown library (Python 3, no dependencies). Run the tests with `python3 run_tests.py`.\n\nWith `attr_list` on a heading, an attribute name containing characters that are not valid in an XML name is cleaned up: `# Title { x><svg/onload=alert(1) }` gives `<h1 x_svg_onload=\"alert(1)\">Title</h1>`. Two other places that accept attribute names do not do this, so untrusted Markdown can inject live markup.\n\n1. Fenced code: `markdown.markdown('``` { .python x><svg/onload=alert(1) }\\n# Some python code\\n```', extensions=['markdown.extensions.fenced_code', 'markdown.extensions.attr_list'])`\n\nExpected: `<pre><code class=\"language-python\" x_svg_onload=\"alert(1)\"># Some python code\\n</code></pre>`\nActual: `<pre><code class=\"language-python\" x><svg/onload=\"alert(1)\"># Some python code\\n</code></pre>`\n\n2. `markdown.markdown('text {@x><svg/onload=alert(1)=y} more', extensions=['markdown.extensions.legacy_attrs'])`\n\nExpected: `<p x_svg_onload_alert_1_=\"y\">text  more</p>`\nActual: `<p x><svg/onload=alert(1)=\"y\">text  more</p>`\n\nAttribute names should be cleaned the same way everywhere (each run of invalid characters becomes `_`); valid names must be unchanged.",
+  "acceptance": [
+    "Both reported inputs render exactly as expected, with no markup injected through an attribute name",
+    "Valid attribute names on fenced code blocks and with legacy_attrs are unchanged",
+    "Regression tests are added for both cases",
+    "The full test suite passes"
+  ],
+  "verify_cmd": "python3 run_tests.py",
+  "source": "https://github.com/Python-Markdown/markdown/commit/a27428b6f6cc74662fdd471293438eedcdf0079f"
+}

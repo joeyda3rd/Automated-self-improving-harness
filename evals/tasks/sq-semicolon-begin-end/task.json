@@ -1,0 +1,11 @@
+{
+  "title": "`sqlparse.split` breaks an inline `WITH FUNCTION ... BEGIN ... END` at the semicolons inside the body",
+  "spec": "This is the sqlparse library (Python 3, no dependencies). Run the tests with `PYTHONPATH=. python3 -m pytest -q -p no:cacheprovider tests`.\n\nA query that defines an inline function with a `BEGIN ... END` body is split at every `;` inside that body.\n\n```python\nimport sqlparse\nsql = \"\"\"WITH\nFUNCTION meaning_of_life()\n  RETURNS tinyint\n  BEGIN\n    DECLARE a tinyint DEFAULT CAST(6 as tinyint);\n    DECLARE b tinyint DEFAULT CAST(7 as tinyint);\n    RETURN a * b;\n  END\nSELECT meaning_of_life();\"\"\"\nsqlparse.split(sql)\n```\nExpected: one statement containing everything from `WITH` to `SELECT meaning_of_life();`\nActual: four statements, the first ending after the first `DECLARE` and the last being `'END\\nSELECT meaning_of_life();'`.\n\nSemicolons inside a `BEGIN ... END` block must not end the statement, also when the statement does not start with `CREATE`. A bare `BEGIN;` is a transaction start, not a block, so `sqlparse.split('BEGIN; UPDATE t SET a = 1; COMMIT;')` must still give three statements.",
+  "acceptance": [
+    "The reported query splits into exactly one statement",
+    "`BEGIN;` used as a transaction statement still splits normally",
+    "Regression tests are added and the full test suite passes"
+  ],
+  "verify_cmd": "PYTHONPATH=. python3 -m pytest -q -p no:cacheprovider tests",
+  "source": "https://github.com/andialbrecht/sqlparse/commit/1a3bfbd50b82c05d9adcc51bacba059671dc1bc7"
+}

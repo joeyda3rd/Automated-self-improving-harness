@@ -1,0 +1,15 @@
+{
+  "title": "Function calls not recognised in `create table ... as select` when `as` is lowercase",
+  "spec": "This is the sqlparse library (Python 3, no dependencies). Run the tests with `PYTHONPATH=. python3 -m pytest -q -p no:cacheprovider tests`.\n\nFunction calls inside a `CREATE TABLE ... AS SELECT` statement are only parsed as `sql.Function` when the `AS` keyword is uppercase. With lowercase `as` they stay as plain names plus parentheses.\n\n```python\nimport sqlparse\nfrom sqlparse import sql\n\ndef funcs(s):\n    out = []\n    def walk(t):\n        if isinstance(t, sql.Function):\n            out.append(t.get_name())\n        for c in getattr(t, 'tokens', []):\n            walk(c)\n    walk(sqlparse.parse(s)[0])\n    return out\n\nfuncs('CREATE TABLE t AS select count(a) from x')  # ['count']  (works)\nfuncs('create table t as select count(a) from x')  # EXPECTED ['count'], ACTUAL []\nfuncs('create table t as select max(a), min(b) from x')  # EXPECTED ['max', 'min'], ACTUAL []\n```\n\nSame with `create table tbl1 as select coalesce(t1.col1, 0) as col1 from t1`: `coalesce(...)` should be a Function. The keyword `as` must be treated case-insensitively here, as `AS` is.",
+  "acceptance": [
+    "`create table t as select count(a) from x` yields a Function named count, same as with uppercase AS",
+    "Mixed-case `As` also works",
+    "Existing tests still pass"
+  ],
+  "verify_cmd": "PYTHONPATH=. python3 -m pytest -q -p no:cacheprovider tests",
+  "source": "https://github.com/andialbrecht/sqlparse/commit/111b35cffcfe44b16fbdd27507f165bafd52a2a1",
+  "curation": {
+    "state": "pool",
+    "source": "sqlparse"
+  }
+}

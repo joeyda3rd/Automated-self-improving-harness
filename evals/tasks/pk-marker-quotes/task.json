@@ -1,0 +1,12 @@
+{
+  "title": "Markers with a double quote inside a value are re-quoted wrongly by `str()`, changing their meaning",
+  "spec": "This is the `packaging` library (Python 3, no dependencies; the code is in `src/packaging/`). Run the tests with `PYTHONPATH=src python3 -m pytest -q -p no:cacheprovider tests --ignore=tests/property` (about a minute).\n\n```python\nfrom packaging.requirements import Requirement\ns = 'demo; \\'a\" == os_name or python_version >= \"0\" or \"b\\' == os_name'\nr = Requirement(s)\nr.marker.evaluate()                    # False\nstr(r)                                 # expected: s, unchanged\nRequirement(str(r)).marker.evaluate()  # expected: False\n```\nActual: `str(r)` is `demo; \"a\" == os_name or python_version >= \"0\" or \"b\" == os_name`, a different marker that evaluates to `True`. More simply, `str(Marker(\"os_name == 'a\\\"b'\"))` gives `os_name == \"a\"b\"`, which does not even parse.\n\nPEP 508 allows either quote style around a value. When a marker is written out, a value should use double quotes unless it contains one, in which case single quotes. A value containing both quote characters cannot be written in PEP 508 (this only happens for a marker tree built by hand): writing it must raise `ValueError(\"Cannot serialize marker value containing both quote characters\")` instead of producing wrong text.",
+  "acceptance": [
+    "The reported requirement and marker round-trip through `str()` with the same meaning",
+    "Values without a double quote are still written with double quotes",
+    "Writing a value with both quote characters raises the `ValueError` above",
+    "Regression tests are added and the full test suite passes"
+  ],
+  "verify_cmd": "PYTHONPATH=src python3 -m pytest -q -p no:cacheprovider tests --ignore=tests/property",
+  "source": "https://github.com/pypa/packaging/commit/5b583e309996a085ad3b5b045f3bf50a09c11b58"
+}

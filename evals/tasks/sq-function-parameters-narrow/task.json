@@ -1,0 +1,11 @@
+{
+  "title": "`Function.get_parameters()` returns the window name instead of the arguments for `foo(5) over win1`",
+  "spec": "This is the sqlparse library (Python 3, no dependencies). Run the tests with `PYTHONPATH=. python3 -m pytest -q -p no:cacheprovider tests`.\n\n```python\nimport sqlparse\nf = sqlparse.parse('foo(5) over win1')[0].tokens[0]   # a sqlparse.sql.Function\nf.get_parameters()\n```\nExpected: `[<Integer '5'>]`\nActual: `[<Identifier 'win1'>]`\n\nI would also like to get at the window itself: please add `Function.get_window()`, returning the window part of the `OVER` clause (the `Identifier` `win1` here) and `None` for a function call without `OVER`.\n\nSimilar inputs are probably affected too; please fix the underlying problem rather than just this case.",
+  "acceptance": [
+    "the reported example produces the expected output",
+    "the underlying problem is fixed, not just the reported input",
+    "the full test suite passes"
+  ],
+  "verify_cmd": "PYTHONPATH=. python3 -m pytest -q -p no:cacheprovider tests",
+  "source": "https://github.com/andialbrecht/sqlparse/commit/e03b74e608b71dd06824c2cb42421c0d790248e3"
+}

@@ -1,0 +1,11 @@
+{
+  "title": "Two spellings of an unbounded range end each compare greater than the other",
+  "spec": "This is the `packaging` library (Python 3, no dependencies; the code is in `src/packaging/`). Run the tests with `PYTHONPATH=src python3 -m pytest -q -p no:cacheprovider tests --ignore=tests/property` (about a minute).\n\nWhile working on the version-range code (`packaging.ranges` is built on the bound classes in the internal module `packaging._ranges`), I found that an unbounded end spelled with `inclusive=True` is not the same bound as the one spelled with `inclusive=False`, and the two order inconsistently:\n\n```python\nfrom packaging._ranges import LowerBound, NEG_INF\na, b = LowerBound(None, True), LowerBound(None, False)\n(a == NEG_INF, a < b, a > b, b > a, len({a, NEG_INF}))\n```\nExpected: `(True, False, False, False, 1)`.\nActual: `(False, False, True, True, 2)`. Each bound sorts above the other, which breaks sorting, `min`/`max` and set deduplication.\n\n`UpperBound(None, True)` versus `UpperBound(None, False)` and `POS_INF` behaves the same. An unbounded end is just -inf or +inf, and inclusiveness means nothing there. For either flag, `LowerBound(None, ...)` and `UpperBound(None, ...)` must equal and hash like `NEG_INF` / `POS_INF`, report `inclusive` as `False`, and compare with each other as a single value (`<` and `>` false, `<=` and `>=` true).",
+  "acceptance": [
+    "Both spellings of each unbounded end are equal, hash alike, and report `inclusive` as `False`",
+    "Comparisons between them behave as for one value",
+    "Regression tests are added and the full test suite passes"
+  ],
+  "verify_cmd": "PYTHONPATH=src python3 -m pytest -q -p no:cacheprovider tests --ignore=tests/property",
+  "source": "https://github.com/pypa/packaging/commit/55cbf1b9426f44455fa1a9e0836f1fc082cc8452"
+}

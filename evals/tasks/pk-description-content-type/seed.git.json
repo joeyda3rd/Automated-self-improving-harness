@@ -1,0 +1,10 @@
+{
+  "url": "https://github.com/pypa/packaging",
+  "rev": "1a9c4cb6b6aac7fb6137fcdc4f440af912d8d87f",
+  "paths": [
+    "src",
+    "tests",
+    "pyproject.toml"
+  ],
+  "fix": "9d0ec47b36a1bcdf705b397b84cd89272410a00d"
+}

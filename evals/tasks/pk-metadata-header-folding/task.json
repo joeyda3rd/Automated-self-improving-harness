@@ -1,0 +1,11 @@
+{
+  "title": "Writing metadata with a carriage return in a field fails with `HeaderWriteError`",
+  "spec": "This is the `packaging` library (Python 3, no dependencies; the code is in `src/packaging/`). Run the tests with `PYTHONPATH=src python3 -m pytest -q -p no:cacheprovider tests --ignore=tests/property` (about a minute).\n\n```python\nfrom packaging import metadata\nmeta = metadata.Metadata.from_raw({\"metadata_version\": \"2.3\", \"name\": \"packaging\",\n                                   \"version\": \"1.2.3\", \"author\": \"Hello\\rWorld\"})\nmeta.as_rfc822().as_string()\n```\nExpected: `'metadata-version: 2.3\\nname: packaging\\nversion: 1.2.3\\nauthor: Hello\\n        World\\n\\n'`, the break folded as a `\\n` would be.\nActual: `email.errors.HeaderWriteError: folded header contains newline: 'author: Hello\\nWorld\\n'`.\n\nOther line boundaries (everything `str.splitlines()` splits on: `\\r\\n`, `\\v`, `\\f`, `\\x1c`, `\\x1d`, `\\x1e`, `\\x85`, `\\u2028`, `\\u2029`) are written unfolded: after `m = metadata.RFC822Message(); m[\"ItemA\"] = \"ValueA\\u2028Requires-Dist: injected\"`, `str(m)` should be `'ItemA: ValueA\\n       Requires-Dist: injected\\n\\n'`, but the `\\u2028` is kept, and on Python releases without the CVE-2024-6923 fix that lets a value inject a header. Every such boundary must fold like `\\n`. Likewise `Summary` must be one line: `Metadata.from_raw({\"summary\": \"Hello\\rAgain\"}, validate=False).summary` should raise `InvalidMetadata` as it does for `\\n`.",
+  "acceptance": [
+    "Header values fold at every `str.splitlines()` boundary, and the reported metadata writes as expected",
+    "A `summary` containing any of these boundaries raises `InvalidMetadata`",
+    "Regression tests are added and the full test suite passes"
+  ],
+  "verify_cmd": "PYTHONPATH=src python3 -m pytest -q -p no:cacheprovider tests --ignore=tests/property",
+  "source": "https://github.com/pypa/packaging/commit/2d873eb6002021a8c007c933fbdab58b37a5079b"
+}
