@@ -224,3 +224,11 @@ Three more cycles ran on the high-effort baseline; all were rejected:
 That is below `min_gate_discriminating` (8), so with budget the daemon would now curate before improving. Real-run cost of the pipeline: about $0.70 per new eval pair (report plus screening), plus about $1 per audited failure.
 
 **Remaining human roles:** setting the budget, choosing source projects in `evals/sources.json`, and a durable host for `ash daemon`.
+
+## 12. Brownfield field test (2026-10-23)
+
+**Assignment:** pagination (`--per-page`, prev/next placeholders, `/page/N/`) and a `sitemap.xml` (sitemaps.org namespace, absolute URLs from `--base-url`, `lastmod` from page dates, warning when the base URL is missing), added to the existing 1,100-line `sitegen`. The assignment gave no hints about its code.
+
+**Result:** planned into 3 tasks, all merged first try, **$0.96 in total** (plan $0.34, then $0.17–0.23 per task). An independent probe site confirmed every requirement, including the defaults staying unchanged.
+
+**Bug found and fixed:** the project history had 21 committed `__pycache__/*.pyc` files (`git add -A` in a project without a `.gitignore`). The harness now excludes build artefacts from every commit and writes a default `.gitignore` for new projects.
