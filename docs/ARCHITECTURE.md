@@ -96,6 +96,22 @@ Long jobs used to run as loose shell scripts. Container restarts left stale entr
 - **Each iteration:** build one ready task, else run an improvement cycle when one is due and `min_cycle_budget_usd` remains, else sleep. `STOP`, `PAUSED` and a budget shortfall halt it. `SIGTERM` (sent by `ash daemon stop`) lets the current step finish.
 - **Auto-resume (opt-in):** `ash [-C project] daemon enable`. This repo's `.claude/settings.json` has a SessionStart hook that runs `ash daemon --ensure --if-enabled`, which is a no-op inside ASH's own sessions or when a daemon is alive. Interrupted baselines resume from saved runs, so restarting costs only the runs in flight.
 
+## The benchmark grows itself (`ash curate`)
+
+The improvement loop is only as good as its yardstick, and a yardstick stops working when it saturates (every version passes) or turns noisy. Keeping it sharp was the most manual part of running ASH, so it is now a harness loop of its own (`ash/curate.py`) that works from the projects in `evals/sources.json`:
+
+| Stage | What it does |
+|---|---|
+| `mine` | Bug-fix commits whose tests fail on the parent and pass with the fix. Each fix is mined once. |
+| `make` | Eval skeleton: pinned seed, hidden upstream tests, reference fix. Kept only if it validates here. |
+| `report` | A *reporter* session writes a full and a narrow user-style report, with real expected/actual output. |
+| `screen` | 2 runs per new eval on the current harness (resumable). |
+| `audit` | An *auditor* session judges each failure fair, unfair or mixed. Unfair narrow variants are deleted. |
+| `gate` | Rewrites `evals/gate.json`: audited-fair, non-noisy failures plus passing canaries. `improve_evals: ["@gate"]` reads it. |
+
+- **Prompts:** the reporter and auditor prompts live in `ash/prompts/` (kernel), so the improver cannot change how its exam is written or graded.
+- **Daemon:** it runs `curate.grow` when the gate has fewer than `min_gate_discriminating` evals, at most every `curate_interval_s`, budget permitting. It commits what curation added or removed, and improves otherwise.
+
 ## Candidate archive and noise
 
 - **Archive:** a candidate that was benchmarked and rejected is kept as `state/archive/<id>.patch`. `ash improve --list` shows them. `ash improve --retry <id>` re-applies one and benchmarks it again without paying for a new proposal. Near misses are not lost to one noisy measurement.

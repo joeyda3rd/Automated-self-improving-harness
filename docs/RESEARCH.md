@@ -210,3 +210,17 @@ Three more cycles ran on the high-effort baseline; all were rejected:
 **Net result of the harness's own improvement loop so far: zero.** Ten proposals were benchmarked (prose, a tool, and effort), and none survived a fair, noise-aware comparison. The weakness the gate measures (inferring unstated variants of a reported bug) has not responded to instructions, tools that diff outputs, or more thinking.
 
 **The real bottleneck is the eval pipeline.** It is still run by hand: mining, writing reports, validating, screening and auditing for fairness. Until the harness does that itself, its improvement stops when its operator does. That is the next piece of work.
+
+## 11. The eval pipeline is now automated (2026-10-23)
+
+`ash curate` runs mine → make → report → screen → audit → gate without a human (see ARCHITECTURE).
+
+**First real run** on sqlparse:
+- **Mine and make:** found a fix I had missed (function grouping with lowercase `as` in `CREATE TABLE … AS`), then built and validated the eval.
+- **Report:** the reporter session ($0.28) wrote a precise full report and a one-example narrow report.
+- **Screen:** both passed 2/2, so neither joins the gate; the narrow one is available as a canary.
+- **Gate:** recomputing it dropped the two noisy evals automatically, leaving 4 discriminating evals plus 4 canaries.
+
+That is below `min_gate_discriminating` (8), so with budget the daemon would now curate before improving. Real-run cost of the pipeline: about $0.70 per new eval pair (report plus screening), plus about $1 per audited failure.
+
+**Remaining human roles:** setting the budget, choosing source projects in `evals/sources.json`, and a durable host for `ash daemon`.
