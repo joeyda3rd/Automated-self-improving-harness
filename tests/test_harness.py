@@ -463,6 +463,13 @@ class LoopTests(unittest.TestCase):
         TaskStore(self.project).add("queued work", "x")
         self.assertFalse(d.meta_allowed(), "with build work queued, meta spend is capped")
 
+    def test_idle_daemon_with_a_project_improves(self):
+        self.harness.cfg.update({"improve_every": 5, "improve_when_idle": True})
+        d = daemon.Daemon(self.harness, self.project, idle_sleep=0)
+        self.assertTrue(d.improvement_due(), "an empty queue does not wait for 5 builds")
+        TaskStore(self.project).add("queued work", "x")
+        self.assertFalse(d.improvement_due(), "while building, improvement waits for improve_every builds")
+
     def test_daemon_skips_improvement_without_budget_for_a_cycle(self):
         self.harness.cfg.update({"budget_usd_total": engine.spent(self.harness) + 1.0, "min_cycle_budget_usd": 12})
         self.assertEqual(daemon.Daemon(self.harness, None, idle_sleep=0).step(), "idle")

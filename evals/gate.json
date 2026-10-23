@@ -1,5 +1,5 @@
 {
-  "updated": 1792726682.5016887,
+  "updated": 1792726792.0879989,
   "gate": [
     "md-attr-name-sanitize-narrow",
     "md-em-strong-nesting-narrow",
@@ -7,13 +7,9 @@
     "sq-begin-transaction-narrow"
   ],
   "smoke": [
-    "md-escape-language-name-codehilite-narrow",
     "md-reflink-backticks-narrow",
     "mi-bucket-invented-key-narrow",
-    "mi-stability-running-min-running-narrow",
-    "pk-reject-empty-arbitrary-versions-narrow",
     "pk-tags-empty-platforms-narrow",
-    "sq-enhance-dos-protection-by-narrow",
     "sq-leading-dot-float-narrow"
   ],
   "noisy": [

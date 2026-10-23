@@ -97,10 +97,10 @@ class Daemon:
         left = claude.remaining(self.h)
         if left is not None and left < self.h.get("min_cycle_budget_usd", 12):
             return False
-        every = self.h.get("improve_every", 0)
-        if self.project and every:
-            return engine.builds_since_improvement(self.h) >= every
-        return bool(self.h.get("improve_when_idle", True))
+        if self.build_work_pending():  # while building, improve every `improve_every` builds
+            every = self.h.get("improve_every", 0)
+            return bool(every) and engine.builds_since_improvement(self.h) >= every
+        return bool(self.h.get("improve_when_idle", True))  # idle time goes to self-improvement
 
     def step(self):
         """One unit of work. Returns what it did."""

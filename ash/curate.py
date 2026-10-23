@@ -393,10 +393,22 @@ def regate(harness, canaries_per_source=1):
             fair.append(name)
         elif c.get("verdict") == "passing" and c.get("narrow_of"):
             canaries.setdefault(c.get("source"), []).append(name)
-    smoke = sorted(n for names in canaries.values() for n in sorted(names)[:canaries_per_source])
     previous = load_json(gate_path(harness), {}) or {}
-    gate = {"updated": time.time(), "gate": sorted(set(fair) | set(previous.get("gate", [])) - noisy),
-            "smoke": sorted(set(smoke) | set(previous.get("smoke", []))), "noisy": sorted(noisy)}
+    existing = {os.path.basename(d) for d in evals.discover(harness)}
+    # one canary per source: keep the current one, add a new one only for a source without any
+    smoke, covered = [], set()
+    for name in sorted(previous.get("smoke", [])):
+        prefix = name.split("-")[0]
+        if name in existing and prefix not in covered:
+            smoke.append(name)
+            covered.add(prefix)
+    for names in canaries.values():
+        for name in sorted(names)[:canaries_per_source]:
+            if name.split("-")[0] not in covered:
+                smoke.append(name)
+                covered.add(name.split("-")[0])
+    gate = {"updated": time.time(), "gate": sorted((set(fair) | set(previous.get("gate", []))) & existing - noisy),
+            "smoke": sorted(smoke), "noisy": sorted(noisy)}
     save_json(gate_path(harness), gate)
     return gate
 
