@@ -1,0 +1,15 @@
+{
+  "title": "Function calls not recognised in `create table ... as select` when `as` is lowercase",
+  "spec": "This is the sqlparse library (Python 3, no dependencies). Run the tests with `PYTHONPATH=. python3 -m pytest -q -p no:cacheprovider tests`.\n\n```python\nimport sqlparse\nfrom sqlparse import sql\np = sqlparse.parse('create table tbl1 as select coalesce(t1.col1, 0) as col1 from t1')[0]\n```\n\nEXPECTED: `coalesce(t1.col1, 0)` is grouped into a `sql.Function` (as it is when the statement is written `CREATE TABLE tbl1 AS select ...`).\nACTUAL: no `sql.Function` is produced anywhere in the tree.\n\nSimilar inputs are probably affected too; please fix the underlying problem rather than just this case.",
+  "acceptance": [
+    "The lowercase-`as` statement yields a Function for coalesce",
+    "Existing tests still pass"
+  ],
+  "verify_cmd": "PYTHONPATH=. python3 -m pytest -q -p no:cacheprovider tests",
+  "source": "https://github.com/andialbrecht/sqlparse/commit/111b35cffcfe44b16fbdd27507f165bafd52a2a1",
+  "curation": {
+    "state": "reported",
+    "source": "sqlparse",
+    "narrow_of": "sq-function-grouping-skipped-lowercase"
+  }
+}
