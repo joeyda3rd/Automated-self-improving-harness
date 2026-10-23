@@ -1,0 +1,18 @@
+{
+  "gate": [
+    "md-attr-name-sanitize-narrow",
+    "md-em-strong-nesting-narrow",
+    "md-html-comment-paragraph-narrow",
+    "md-unterminated-html-narrow",
+    "sq-begin-transaction-narrow",
+    "sq-splitter-nesting-narrow"
+  ],
+  "smoke": [
+    "md-reflink-backticks-narrow",
+    "mi-bucket-invented-key-narrow",
+    "pk-tags-empty-platforms-narrow",
+    "sq-leading-dot-float-narrow"
+  ],
+  "noisy": [],
+  "note": "migrated from the hand-audited gate of 2026-10-22"
+}

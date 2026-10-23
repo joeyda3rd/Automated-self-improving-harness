@@ -9,8 +9,9 @@ Liveness is an exclusive flock on state/daemon.lock: the kernel drops it when th
 dies, so a crash or a container restart can never leave a lock that looks alive. The
 daemon writes a heartbeat to state/daemon.json; `ash status` reports both.
 
-Each iteration: build one ready task (if a project is attached), else run an improvement
-cycle when one is due and the remaining budget covers a full cycle, else sleep.
+Each iteration: build one ready task (if a project is attached); else grow the benchmark when
+the gate has too few discriminating evals (ash/curate.py); else run an improvement cycle when
+one is due and the remaining budget covers it; else sleep.
 Interrupted benchmarks resume from saved runs, so restarting is always safe.
 """
 import fcntl
@@ -22,7 +23,7 @@ import sys
 import threading
 import time
 
-from . import claude, engine, evals, improve
+from . import claude, curate, engine, evals, improve
 from .config import save_json
 from .tasks import TaskStore
 
@@ -105,11 +106,27 @@ class Daemon:
                 self.beat(phase="building")
                 engine.run_task(self.h, self.project, store.ready()[0])
                 return "built"
+        if self.curation_due():
+            self.beat(phase="curating")
+            gate = curate.grow(self.h)
+            return f"curated (gate {len(gate['gate'])} + {len(gate['smoke'])} smoke)"
         if self.improvement_due():
             self.beat(phase="improving")
             improve.cycle(self.h)
             return "improved"
         return "idle"
+
+    def curation_due(self):
+        """Grow the benchmark when the gate is too small to carry signal (and it is affordable)."""
+        if not curate.sources(self.h) or not curate.needs_growth(self.h):
+            return False
+        if time.time() - self.state.get("last_curated", 0) < self.h.get("curate_interval_s", 6 * 3600):
+            return False  # mining may find nothing new; do not spin on it
+        left = claude.remaining(self.h)
+        if left is not None and left < self.h.get("min_curate_budget_usd", 10):
+            return False
+        self.state["last_curated"] = time.time()
+        return True
 
     def run(self):
         lock = acquire(self.h)

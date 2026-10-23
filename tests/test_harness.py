@@ -236,7 +236,7 @@ class LoopTests(unittest.TestCase):
         engine.init_project(self.project)
 
     def tearDown(self):
-        for k in ("ASH_CLAUDE_BIN", "FAKE_LAZY_FIRST", "FAKE_TOUCH_KERNEL", "FAKE_FOLLOWUP", "FAKE_LOG", "FAKE_VERDICT", "FAKE_SLEEP", "FAKE_IMPROVER_TEXT"):
+        for k in ("ASH_CLAUDE_BIN", "FAKE_LAZY_FIRST", "FAKE_TOUCH_KERNEL", "FAKE_FOLLOWUP", "FAKE_LOG", "FAKE_VERDICT", "FAKE_SLEEP", "FAKE_IMPROVER_TEXT", "FAKE_AUDIT"):
             os.environ.pop(k, None)
         shutil.rmtree(self.tmp, ignore_errors=True)
 
@@ -440,6 +440,61 @@ class LoopTests(unittest.TestCase):
     def test_daemon_skips_improvement_without_budget_for_a_cycle(self):
         self.harness.cfg.update({"budget_usd_total": engine.spent(self.harness) + 1.0, "min_cycle_budget_usd": 12})
         self.assertEqual(daemon.Daemon(self.harness, None, idle_sleep=0).step(), "idle")
+
+    def _upstream_with_a_bug_fix(self):
+        up = os.path.join(self.tmp, "upstream")
+        os.makedirs(os.path.join(up, "pkg"))
+        os.makedirs(os.path.join(up, "tests"))
+        files = {"pkg/__init__.py": "", "pkg/calc.py": "def absval(x):\n    return x if x > 0 else x\n",
+                 "tests/__init__.py": "",
+                 "tests/test_calc.py": "import unittest\nfrom pkg.calc import absval\n\n\nclass T(unittest.TestCase):\n"
+                                       "    def test_positive(self):\n        self.assertEqual(absval(3), 3)\n"}
+        for f, text in files.items():
+            with open(os.path.join(up, f), "w") as fh:
+                fh.write(text)
+        gitops.ensure_repo(up)
+        gitops.git(up, "config", "uploadpack.allowAnySHA1InWant", "true")
+        with open(os.path.join(up, "pkg/calc.py"), "w") as fh:
+            fh.write("def absval(x):\n    return x if x > 0 else -x\n")
+        with open(os.path.join(up, "tests/test_calc.py"), "a") as fh:
+            fh.write("\n    def test_negative(self):\n        self.assertEqual(absval(-2), 2)\n")
+        gitops.commit_all(up, "Fix absval returning negative numbers")
+        save_json(os.path.join(self.home, "evals", "sources.json"), {"toylib": {
+            "url": "file://" + up, "prefix": "tl", "src": "pkg/", "tests": "tests/", "paths": ["pkg", "tests"],
+            "test_cmd": "python3 -m unittest discover -s tests -t . -q", "intro": "This is toylib."}})
+        return up
+
+    def test_curation_pipeline_grows_a_fair_gate(self):
+        from ash import curate
+        self._upstream_with_a_bug_fix()
+        self.harness.cfg.update({"retro": False})
+        gate = curate.grow(self.harness, per_source=3)
+        self.assertEqual(gate["gate"], ["tl-absval-returning-negative-numbers",
+                                        "tl-absval-returning-negative-numbers-narrow"])
+        made = os.path.join(self.harness.evals_dir, "tl-absval-returning-negative-numbers")
+        task = json.loads(read(os.path.join(made, "task.json")))
+        self.assertEqual((task["title"], task["curation"]["verdict"]), ("absval is wrong for negatives", "fair"))
+        self.assertTrue(os.path.exists(os.path.join(made, "hidden", "tests", "test_calc.py")))
+        self.assertIn("ASH curation", gitops.git(self.home, "log", "-1", "--format=%s"))
+        self.assertEqual(curate.mine(self.harness, "toylib"), 0, "a fix is only mined once")
+        self.harness.cfg["improve_evals"] = ["@gate"]
+        self.assertEqual(evals.gate_set(self.harness), set(gate["gate"]))
+
+    def test_daemon_curates_when_the_gate_is_too_small(self):
+        self._upstream_with_a_bug_fix()
+        self.harness.cfg.update({"min_gate_discriminating": 8, "budget_usd_total": None})
+        d = daemon.Daemon(self.harness, None, idle_sleep=0)
+        self.assertTrue(d.step().startswith("curated"))
+        self.assertFalse(d.curation_due(), "no second curation pass until the interval has passed")
+
+    def test_curation_drops_unfair_narrow_variants(self):
+        from ash import curate
+        os.environ["FAKE_AUDIT"] = "unfair"
+        self._upstream_with_a_bug_fix()
+        gate = curate.grow(self.harness, per_source=3)
+        self.assertEqual(gate["gate"], [])
+        self.assertFalse(os.path.exists(os.path.join(self.harness.evals_dir,
+                                                     "tl-absval-returning-negative-numbers-narrow")))
 
     def test_inbox_intake(self):
         with open(os.path.join(self.project.inbox, "feature.md"), "w") as fh:

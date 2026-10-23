@@ -24,16 +24,7 @@
     "docs/"
   ],
   "improve_evals": [
-    "md-attr-name-sanitize-narrow",
-    "md-em-strong-nesting-narrow",
-    "md-html-comment-paragraph-narrow",
-    "md-unterminated-html-narrow",
-    "sq-begin-transaction-narrow",
-    "sq-splitter-nesting-narrow",
-    "sq-leading-dot-float-narrow",
-    "mi-bucket-invented-key-narrow",
-    "pk-tags-empty-platforms-narrow",
-    "md-reflink-backticks-narrow"
+    "@gate"
   ],
   "improve_eval_repeats": 2,
   "eval_workers": 4,
@@ -41,5 +32,7 @@
   "retro_min_turns": 20,
   "effort": {
     "default": "medium"
-  }
+  },
+  "min_gate_discriminating": 8,
+  "min_curate_budget_usd": 10
 }

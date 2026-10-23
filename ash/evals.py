@@ -107,8 +107,15 @@ def gate_set(harness):
     """
     import fnmatch
     patterns = harness.get("improve_evals", ["*"])
-    return {os.path.basename(d) for d in discover(harness)
-            if any(fnmatch.fnmatch(os.path.basename(d), p) for p in patterns)}
+    names = {os.path.basename(d) for d in discover(harness)}
+    gate = set()
+    for p in patterns:
+        if p == "@gate":  # the curated gate (evals/gate.json): discriminating evals plus smoke canaries
+            g = load_json(os.path.join(os.path.dirname(harness.evals_dir), "gate.json"), {}) or {}
+            gate |= (set(g.get("gate", [])) | set(g.get("smoke", []))) & names
+        else:
+            gate |= {n for n in names if fnmatch.fnmatch(n, p)}
+    return gate
 
 
 def run_suite(harness, plugin_dir, label, names=None, repeats=None, resumable=False):
@@ -175,8 +182,10 @@ def summarize(label, results):
 
 def smoke_set(harness):
     """Evals marked {"smoke": true} within the gate set: a cheap first stage that rejects obvious regressions."""
-    return {os.path.basename(d) for d in discover(harness)
-            if (load_json(os.path.join(d, "task.json"), {}) or {}).get("smoke")} & gate_set(harness)
+    curated = load_json(os.path.join(os.path.dirname(harness.evals_dir), "gate.json"), {}) or {}
+    return ({os.path.basename(d) for d in discover(harness)
+             if (load_json(os.path.join(d, "task.json"), {}) or {}).get("smoke")} | set(curated.get("smoke", []))) \
+        & gate_set(harness)
 
 
 def regressions(baseline, candidate):

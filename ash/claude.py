@@ -141,8 +141,13 @@ def _parse_output(stdout):
     return envelope, structured
 
 
+KERNEL_ROLES = {"reporter", "auditor"}  # they write and grade the benchmark, so the improver cannot edit them
+
+
 def role_prompt(plugin_dir, role):
     path = os.path.join(plugin_dir, "roles", f"{role}.md")
+    if role in KERNEL_ROLES:
+        path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "prompts", f"{role}.md")
     try:
         with open(path, encoding="utf-8") as fh:
             return fh.read()

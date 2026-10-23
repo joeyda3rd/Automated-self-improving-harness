@@ -45,6 +45,14 @@ elif role == "retro":
            "lesson_feedback": [{"id": i, "verdict": os.environ.get("FAKE_VERDICT", "helpful")}
                                for i in __import__("re").findall(r"L-[0-9a-f]{6}", argv[argv.index("-p") + 1])],
            "harness_suggestion": "builders should batch reads"}
+elif role == "reporter":
+    out = {"full": {"title": "absval is wrong for negatives", "spec": "absval(-2) gives -2, expected 2.",
+                    "acceptance": ["absval(-2) == 2"]},
+           "narrow": {"title": "absval(-2) is wrong", "spec": "absval(-2) gives -2. Please fix the underlying problem.",
+                      "acceptance": ["the reported example works"]}}
+elif role == "auditor":
+    out = {"verdict": os.environ.get("FAKE_AUDIT", "fair"), "failing_tests": ["test_negative"],
+           "reason": "same bug on a closely related input"}
 elif role == "improver":
     with open("plugin/skills/build-task/SKILL.md", "a") as fh:
         fh.write(os.environ.get("FAKE_IMPROVER_TEXT", "\nIMPROVED: batch your reads.\n"))

@@ -124,6 +124,28 @@ def cmd_daemon(h, args):
                              max_iterations=args.max_iterations).run()
 
 
+def cmd_curate(h, args):
+    from . import curate
+    names = [args.source] if args.source else list(curate.sources(h))
+    if args.stage == "mine":
+        for n in names:
+            print(f"{n}: {curate.mine(h, n, limit=args.limit)} new candidates")
+    elif args.stage == "make":
+        for n in names:
+            print(f"{n}: made {curate.make(h, n, limit=args.limit)}")
+    elif args.stage == "report":
+        print(curate.report(h, limit=args.limit))
+    elif args.stage == "screen":
+        s = curate.screen(h)
+        print("nothing to screen" if s is None else {k: v["rate"] for k, v in s["per_task"].items()})
+    elif args.stage == "audit":
+        print(curate.audit(h, limit=args.limit))
+    elif args.stage == "gate":
+        print(json.dumps(curate.regate(h), indent=2))
+    else:
+        print(json.dumps(curate.grow(h, per_source=args.limit), indent=2))
+
+
 def cmd_eval(h, args):
     if args.repeats:
         h.cfg["eval_repeats"] = args.repeats
@@ -191,6 +213,13 @@ def parser():
                            ("pause", cmd_pause, "stop the loop after the current task"),
                            ("resume", cmd_resume, "clear a pause or circuit-breaker trip")]:
         sub.add_parser(name, help=text).set_defaults(fn=fn)
+
+    s = sub.add_parser("curate", help="grow the benchmark from real bug fixes (mine/make/report/screen/audit/gate)")
+    s.add_argument("stage", nargs="?", default="grow",
+                   choices=["mine", "make", "report", "screen", "audit", "gate", "grow"])
+    s.add_argument("--source", help="one entry of evals/sources.json (default: all)")
+    s.add_argument("--limit", type=int, default=3)
+    s.set_defaults(fn=cmd_curate)
 
     s = sub.add_parser("daemon", help="the supervisor: build queued work and self-improve, single instance")
     s.add_argument("action", nargs="?", choices=["enable", "disable", "stop", "status"])
