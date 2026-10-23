@@ -154,16 +154,24 @@ def mine(harness, name, limit=10, max_commits=1500, max_src_files=4):
         tests = [f for f in files if f.startswith(src["tests"])]
         if not srcs or not tests or len(srcs) > max_src_files:
             continue
+        # mine_cmd (optional) runs only the touched test files: fast screening for slow suites.
+        # The full suite still runs when the eval is validated in make().
+        py_tests = [t for t in tests if t.endswith(".py") and os.path.basename(t).startswith("test")]
+        cmd = src.get("mine_cmd", src["test_cmd"])
+        if "{tests}" in cmd and not py_tests:
+            continue
         tmp = tempfile.mkdtemp(prefix="ash-mine-")
         try:
             _export(repo, f"{sha}^", src["paths"], tmp, prepare_script(harness, src))
-            if not _passes(src["test_cmd"], tmp):
+            before = [t for t in py_tests if os.path.exists(os.path.join(tmp, t))]
+            if ("{tests}" not in cmd or before) and not _passes(cmd.replace("{tests}", " ".join(before)), tmp):
                 continue  # the parent must be green
+            cmd = cmd.replace("{tests}", " ".join(py_tests))
             _overlay(repo, sha, tests, tmp)
-            if _passes(src["test_cmd"], tmp):
+            if _passes(cmd, tmp):
                 continue  # the fix's tests must expose the bug
             _overlay(repo, sha, srcs, tmp)
-            if not _passes(src["test_cmd"], tmp):
+            if not _passes(cmd, tmp):
                 continue
             append_jsonl(out, {"sha": sha, "date": date, "subject": subject, "source": name,
                                "src": srcs, "tests": tests, "state": "mined"})
